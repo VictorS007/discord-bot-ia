@@ -1,10 +1,10 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { assertAiAllowed } from '../../application/assertAiAllowed.js';
-import { conversationId } from '../../domain/conversation/conversationId.js';
-import { AppError, RateLimitError } from '../../shared/errors.js';
+import { AppError, GuildAiDisabledError, RateLimitError } from '../../shared/errors.js';
 import { splitMessage } from '../../shared/splitMessage.js';
 import { DISCORD_MESSAGE_LIMIT } from '../../config/constants.js';
 import type { AppDependencies } from '../../container.js';
+import { resolveAiSession } from '../ai/resolveAiSession.js';
 import { errorEmbed } from '../embeds.js';
 import type { Command } from './Command.js';
 
@@ -18,9 +18,16 @@ export const askCommand: Command = {
 
   async execute(interaction: ChatInputCommandInteraction, deps: AppDependencies) {
     const settings = await deps.getGuildSettings.execute(interaction.guildId);
+    const ticket = await deps.resolveTicketChannel.execute(interaction.channelId);
 
     try {
-      assertAiAllowed(settings, interaction.channelId);
+      if (ticket) {
+        if (!settings.aiEnabled) {
+          throw new GuildAiDisabledError();
+        }
+      } else {
+        assertAiAllowed(settings, interaction.channelId);
+      }
     } catch (error) {
       const message = error instanceof AppError ? error.userMessage : 'A IA não está disponível aqui.';
       await interaction.reply({ embeds: [errorEmbed(message)], ephemeral: true });
@@ -41,11 +48,19 @@ export const askCommand: Command = {
     await interaction.deferReply();
     deps.cooldown.hit(interaction.user.id);
 
+    const session = resolveAiSession({
+      userId: interaction.user.id,
+      channelId: interaction.channelId,
+      settings,
+      ticket,
+      guildName: interaction.guild?.name ?? 'servidor',
+    });
+
     try {
       const answer = await deps.askAi.execute({
-        conversationId: conversationId(interaction.user.id, interaction.channelId),
+        conversationId: session.conversationId,
         question,
-        systemPrompt: settings.systemPrompt,
+        systemPrompt: session.systemPrompt,
         model: settings.model,
         maxHistoryMessages: settings.maxHistoryMessages,
       });

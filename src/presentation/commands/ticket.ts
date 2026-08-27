@@ -48,6 +48,13 @@ export const ticketCommand: Command = {
             .setDescription('Categoria onde o canal do ticket será criado.')
             .addChannelTypes(ChannelType.GuildCategory)
             .setRequired(true),
+        )
+        .addStringOption((option) =>
+          option
+            .setName('instrucao')
+            .setDescription('Instruções extras da IA para este tipo de ticket (opcional).')
+            .setRequired(false)
+            .setMaxLength(2000),
         ),
     )
     .addSubcommand((sub) =>
@@ -71,6 +78,20 @@ export const ticketCommand: Command = {
             .setDescription('Canal do painel.')
             .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement)
             .setRequired(true),
+        ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('instrucao')
+        .setDescription('Dono do bot: define ou consulta as instruções de IA da opção.')
+        .addIntegerOption((option) =>
+          option.setName('id').setDescription('ID da opção (/ticket listar).').setRequired(true).setMinValue(1),
+        )
+        .addStringOption((option) =>
+          option
+            .setName('texto')
+            .setDescription('Nova instrução. Omita para só ver. Envie um espaço para limpar.')
+            .setMaxLength(2000),
         ),
     )
     .addSubcommand((sub) =>
@@ -105,6 +126,7 @@ export const ticketCommand: Command = {
           panelChannelId: sala.id,
           label,
           categoryId: categoria.id,
+          aiInstructions: interaction.options.getString('instrucao')?.trim() || null,
         });
 
         await refreshPanel(interaction, deps, sala.id);
@@ -117,6 +139,9 @@ export const ticketCommand: Command = {
                 `**Opção:** ${created.label}`,
                 `**Sala do painel:** <#${created.panelChannelId}>`,
                 `**Categoria dos tickets:** <#${created.categoryId}>`,
+                created.aiInstructions
+                  ? `**Instrução de IA:** ${created.aiInstructions.slice(0, 300)}`
+                  : '**Instrução de IA:** usa o prompt do servidor',
               ].join('\n'),
             ),
           ],
@@ -152,13 +177,56 @@ export const ticketCommand: Command = {
           return;
         }
 
-        const lines = options.map(
-          (option) =>
-            `\`${option.id}\` · **${option.label}** · painel <#${option.panelChannelId}> · categoria <#${option.categoryId}>`,
-        );
+        const lines = options.map((option) => {
+          const ia = option.aiInstructions ? 'IA custom' : 'IA do servidor';
+          return `\`${option.id}\` · **${option.label}** · ${ia} · painel <#${option.panelChannelId}> · categoria <#${option.categoryId}>`;
+        });
 
         await interaction.reply({
           embeds: [infoEmbed('Opções de ticket', lines.join('\n'))],
+          ephemeral: true,
+        });
+        return;
+      }
+
+      if (subcommand === 'instrucao') {
+        const id = interaction.options.getInteger('id', true);
+        const texto = interaction.options.getString('texto');
+
+        if (texto === null) {
+          const options = await deps.listTicketOptions.execute(guildId);
+          const option = options.find((item) => item.id === id);
+          if (!option) {
+            throw new AppError('Opção de ticket inexistente', 'Não achei essa opção neste servidor.');
+          }
+
+          await interaction.reply({
+            embeds: [
+              infoEmbed(
+                `Instrução de IA · ${option.label}`,
+                option.aiInstructions ?? 'Nenhuma instrução extra. A IA usa o prompt do servidor + o tipo da opção.',
+              ),
+            ],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const updated = await deps.updateTicketOptionInstructions.execute(
+          id,
+          guildId,
+          texto.trim().length === 0 ? null : texto.trim(),
+        );
+
+        await interaction.reply({
+          embeds: [
+            infoEmbed(
+              'Instrução atualizada',
+              updated.aiInstructions
+                ? `A opção **${updated.label}** agora tem instrução própria de IA.`
+                : `A opção **${updated.label}** voltou a usar só o prompt do servidor.`,
+            ),
+          ],
           ephemeral: true,
         });
         return;

@@ -73,6 +73,20 @@ const MIGRATIONS: ReadonlyArray<{ version: number; sql: string }> = [
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `,
   },
+  {
+    version: 5,
+    sql: `
+      ALTER TABLE guild_settings
+      ADD COLUMN ticket_ai_enabled TINYINT(1) NOT NULL DEFAULT 1
+    `,
+  },
+  {
+    version: 6,
+    sql: `
+      ALTER TABLE ticket_options
+      ADD COLUMN ai_instructions TEXT NULL
+    `,
+  },
 ];
 
 export async function migrate(pool: Pool): Promise<void> {

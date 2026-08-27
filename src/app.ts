@@ -12,6 +12,8 @@ import { ListTicketOptionsUseCase } from './application/ListTicketOptionsUseCase
 import { OpenTicketUseCase } from './application/OpenTicketUseCase.js';
 import { PurgeGuildTicketsUseCase } from './application/PurgeGuildTicketsUseCase.js';
 import { RemoveTicketOptionUseCase } from './application/RemoveTicketOptionUseCase.js';
+import { ResolveTicketChannelUseCase } from './application/ResolveTicketChannelUseCase.js';
+import { UpdateTicketOptionInstructionsUseCase } from './application/UpdateTicketOptionInstructionsUseCase.js';
 import { ResetConversationUseCase } from './application/ResetConversationUseCase.js';
 import { ResetGuildSettingsUseCase } from './application/ResetGuildSettingsUseCase.js';
 import { UpdateGuildSettingsUseCase } from './application/UpdateGuildSettingsUseCase.js';
@@ -74,6 +76,8 @@ export async function startBot(env: Env): Promise<void> {
     openTicket: new OpenTicketUseCase(ticketOptions, tickets),
     closeTicket: new CloseTicketUseCase(tickets),
     purgeGuildTickets: new PurgeGuildTicketsUseCase(ticketOptions, tickets, ticketPanels),
+    resolveTicketChannel: new ResolveTicketChannelUseCase(tickets, ticketOptions),
+    updateTicketOptionInstructions: new UpdateTicketOptionInstructionsUseCase(ticketOptions),
     ticketPanels,
     cooldown: new Cooldown(),
   };

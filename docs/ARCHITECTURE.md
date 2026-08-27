@@ -32,7 +32,7 @@ Casos de uso orquestram o domínio.
 - `ResetConversationUseCase` — apaga o histórico de uma chave
 - `GetGuildSettingsUseCase` — mescla a linha do banco com os defaults do `.env`
 - `UpdateGuildSettingsUseCase` / `ResetGuildSettingsUseCase` — patch ou restore
-- Casos de uso de ticket — cadastrar opção, abrir, fechar, limpar ao sair do servidor
+- Casos de uso de ticket — cadastrar opção, abrir, fechar, responder com IA, limpar ao sair do servidor
 
 Eles recebem interfaces no construtor. Não sabem se a IA é OpenAI ou se o histórico está em um `Map`.
 

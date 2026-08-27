@@ -14,6 +14,7 @@ interface GuildSettingsRow extends RowDataPacket {
   allowed_channel_id: string | null;
   cooldown_ms: number | null;
   max_history_messages: number | null;
+  ticket_ai_enabled: number;
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -36,8 +37,9 @@ export class MysqlGuildSettingsRepository implements GuildSettingsRepository {
       `
       INSERT INTO guild_settings (
         guild_id, ai_enabled, mention_enabled, system_prompt, model,
-        allowed_channel_id, cooldown_ms, max_history_messages, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        allowed_channel_id, cooldown_ms, max_history_messages, ticket_ai_enabled,
+        created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE
         ai_enabled = VALUES(ai_enabled),
         mention_enabled = VALUES(mention_enabled),
@@ -46,6 +48,7 @@ export class MysqlGuildSettingsRepository implements GuildSettingsRepository {
         allowed_channel_id = VALUES(allowed_channel_id),
         cooldown_ms = VALUES(cooldown_ms),
         max_history_messages = VALUES(max_history_messages),
+        ticket_ai_enabled = VALUES(ticket_ai_enabled),
         updated_at = VALUES(updated_at)
       `,
       [
@@ -57,6 +60,7 @@ export class MysqlGuildSettingsRepository implements GuildSettingsRepository {
         settings.allowedChannelId,
         settings.cooldownMs,
         settings.maxHistoryMessages,
+        settings.ticketAiEnabled ? 1 : 0,
         toMysqlDateTime(settings.createdAt),
         toMysqlDateTime(settings.updatedAt),
       ],
@@ -78,6 +82,7 @@ function toDomain(row: GuildSettingsRow): GuildSettings {
     allowedChannelId: row.allowed_channel_id,
     cooldownMs: row.cooldown_ms === null ? null : Number(row.cooldown_ms),
     maxHistoryMessages: row.max_history_messages === null ? null : Number(row.max_history_messages),
+    ticketAiEnabled: Number(row.ticket_ai_enabled) === 1,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
   };

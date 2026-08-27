@@ -21,6 +21,6 @@ export class AddTicketOptionUseCase {
       throw new DuplicateTicketOptionError(label);
     }
 
-    return this.options.create({ ...input, label });
+    return this.options.create({ ...input, label, aiInstructions: input.aiInstructions });
   }
 }

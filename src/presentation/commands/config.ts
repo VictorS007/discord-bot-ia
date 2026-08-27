@@ -91,6 +91,14 @@ export const configCommand: Command = {
     )
     .addSubcommand((sub) =>
       sub.setName('restaurar').setDescription('Apaga as configurações deste servidor e volta aos padrões globais.'),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('ticket-ia')
+        .setDescription('Liga ou desliga a IA automática nos canais de ticket.')
+        .addBooleanOption((option) =>
+          option.setName('ativado').setDescription('A IA deve responder sozinha nos tickets?').setRequired(true),
+        ),
     ),
 
   async execute(interaction: ChatInputCommandInteraction, deps: AppDependencies) {
@@ -195,6 +203,10 @@ async function applySubcommand(
       return deps.updateGuildSettings.execute(guildId, {
         maxHistoryMessages: interaction.options.getInteger('quantidade', true),
       });
+    case 'ticket-ia':
+      return deps.updateGuildSettings.execute(guildId, {
+        ticketAiEnabled: interaction.options.getBoolean('ativado', true),
+      });
     default:
       throw new Error(`Subcomando desconhecido: ${subcommand}`);
   }
@@ -207,6 +219,7 @@ function settingsEmbed(settings: ResolvedGuildSettings) {
   const description = [
     `**IA:** ${onOff(settings.aiEnabled)}`,
     `**Menções:** ${onOff(settings.mentionEnabled)}`,
+    `**IA nos tickets:** ${onOff(settings.ticketAiEnabled)}`,
     `**Modelo:** \`${settings.model}\`${settings.usingDefaultModel ? ' *(padrão global)*' : ''}`,
     `**Canal:** ${settings.allowedChannelId ? `<#${settings.allowedChannelId}>` : 'todos'}`,
     `**Cooldown:** ${settings.cooldownMs}ms${settings.usingDefaultCooldown ? ' *(padrão global)*' : ''}`,

@@ -12,9 +12,9 @@ const HELP_TEXT = [
   '• `/ping` — latência do bot',
   '• `/help` — esta mensagem',
   '• `/config` — configurações por servidor (administradores)',
-  '• `/ticket` — painel de tickets (o dono do bot cadastra as opções)',
+  '• `/ticket` — painel de tickets; a IA atende quem abriu o canal',
   '',
-  'Cada usuário tem um histórico próprio por canal. O contexto é mantido até você usar `/reset` ou o bot reiniciar.',
+  'Cada usuário tem um histórico próprio por canal. Em tickets, o histórico é do canal inteiro (você + equipe + IA).',
   'Prompt, modelo, canal e cooldown podem ser diferentes em cada servidor — veja `/config ver`.',
 ].join('\n');
 

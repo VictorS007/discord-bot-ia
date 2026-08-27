@@ -10,6 +10,7 @@ export interface TicketOption {
   panelChannelId: string;
   label: string;
   categoryId: string;
+  aiInstructions: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -19,6 +20,7 @@ export interface NewTicketOption {
   panelChannelId: string;
   label: string;
   categoryId: string;
+  aiInstructions: string | null;
 }
 
 export const TICKET_OPTIONS_PER_CHANNEL_LIMIT = 25;

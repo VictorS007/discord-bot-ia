@@ -119,8 +119,15 @@ Só o **dono do bot** (dono da aplicação no Discord, ou `BOT_OWNER_ID` no `.en
 | `/ticket listar` | Dono do bot | Lista opções deste servidor |
 | `/ticket painel` | Dono do bot | Republica o menu na sala |
 | `/ticket fechar` | Quem abriu / moderador | Fecha o ticket do canal atual |
+| `/ticket instrucao` | Dono do bot | Vê ou define o texto extra da IA daquela opção |
 
-O membro escolhe a opção no menu da sala. O bot cria um canal privado na categoria daquela opção, copiando as permissões da categoria (para a equipe continuar vendo) e liberando quem abriu o ticket.
+O membro escolhe a opção no menu da sala. O bot cria um canal privado na categoria daquela opção. **A IA responde sozinha** quem abriu o ticket, usando:
+
+1. o prompt e o modelo do servidor (`/config`)
+2. o tipo da opção (Suporte, Denúncia, etc.)
+3. instruções extras da opção, se existirem (`/ticket adicionar instrucao:` ou `/ticket instrucao`)
+
+A equipe pode falar no canal sem disparar a IA; o texto entra no contexto. Se a equipe mencionar o bot, ele responde. `/config ticket-ia` liga ou desliga esse modo. `/ask` e `/reset` no canal do ticket usam o mesmo histórico.
 
 ### `/config` (por servidor)
 
@@ -136,6 +143,7 @@ Quem tem a permissão **Gerenciar Servidor** pode personalizar o bot. Tudo é gr
 | `/config canal`   | Restringe a IA a um canal; sem canal, libera todos  |
 | `/config cooldown`| Intervalo mínimo entre perguntas (ms)               |
 | `/config historico` | Tamanho do contexto por conversa                  |
+| `/config ticket-ia` | Liga/desliga a IA automática nos tickets       |
 | `/config restaurar` | Volta aos padrões globais do `.env`               |
 
 Campos não personalizados herdam `SYSTEM_PROMPT`, `OPENAI_MODEL`, `USER_COOLDOWN_MS` e `MAX_HISTORY_MESSAGES` do `.env`. Se o bot sair do servidor, a linha correspondente é apagada.

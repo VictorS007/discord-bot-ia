@@ -13,6 +13,7 @@ export interface GuildSettings {
   allowedChannelId: string | null;
   cooldownMs: number | null;
   maxHistoryMessages: number | null;
+  ticketAiEnabled: boolean;
   createdAt: string;
   updatedAt: string;
 }
@@ -39,6 +40,7 @@ export interface ResolvedGuildSettings {
   usingDefaultModel: boolean;
   usingDefaultCooldown: boolean;
   usingDefaultHistory: boolean;
+  ticketAiEnabled: boolean;
 }
 
 export type GuildSettingsPatch = {
@@ -49,6 +51,7 @@ export type GuildSettingsPatch = {
   allowedChannelId?: string | null;
   cooldownMs?: number | null;
   maxHistoryMessages?: number | null;
+  ticketAiEnabled?: boolean;
 };
 
 export function resolveGuildSettings(
@@ -69,6 +72,7 @@ export function resolveGuildSettings(
     usingDefaultModel: stored?.model == null,
     usingDefaultCooldown: stored?.cooldownMs == null,
     usingDefaultHistory: stored?.maxHistoryMessages == null,
+    ticketAiEnabled: stored?.ticketAiEnabled ?? true,
   };
 }
 
@@ -89,6 +93,7 @@ export function applyGuildSettingsPatch(
     cooldownMs: patch.cooldownMs !== undefined ? patch.cooldownMs : (current?.cooldownMs ?? null),
     maxHistoryMessages:
       patch.maxHistoryMessages !== undefined ? patch.maxHistoryMessages : (current?.maxHistoryMessages ?? null),
+    ticketAiEnabled: patch.ticketAiEnabled ?? current?.ticketAiEnabled ?? true,
     createdAt: current?.createdAt ?? nowIso,
     updatedAt: nowIso,
   };

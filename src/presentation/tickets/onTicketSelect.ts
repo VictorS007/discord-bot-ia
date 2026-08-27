@@ -67,12 +67,17 @@ export async function onTicketSelect(
       .setLabel('Fechar ticket')
       .setStyle(ButtonStyle.Danger);
 
+    const settings = await deps.getGuildSettings.execute(interaction.guildId);
+    const aiHint = settings.aiEnabled && settings.ticketAiEnabled
+      ? `\n\nA IA deste servidor vai te atender neste canal, no estilo **${option.label}**. A equipe também pode entrar. Escreva sua dúvida abaixo.`
+      : `\nA equipe já consegue ver o canal.`;
+
     await channel.send({
       content: `${interaction.user}`,
       embeds: [
         infoEmbed(
           option.label,
-          `${interaction.user} abriu este ticket.\nA equipe já consegue ver o canal. Use o botão abaixo ou \`/ticket fechar\` quando terminar.`,
+          `${interaction.user} abriu este ticket.${aiHint}\nUse o botão abaixo ou \`/ticket fechar\` quando terminar.`,
         ),
       ],
       components: [new ActionRowBuilder<ButtonBuilder>().addComponents(closeButton)],

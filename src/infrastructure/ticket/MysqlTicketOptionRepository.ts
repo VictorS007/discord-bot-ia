@@ -12,6 +12,7 @@ interface TicketOptionRow extends RowDataPacket {
   panel_channel_id: string;
   label: string;
   category_id: string;
+  ai_instructions: string | null;
   created_at: Date | string;
   updated_at: Date | string;
 }
@@ -24,14 +25,15 @@ export class MysqlTicketOptionRepository implements TicketOptionRepository {
     const [result] = await this.pool.execute<ResultSetHeader>(
       `
       INSERT INTO ticket_options (
-        guild_id, panel_channel_id, label, category_id, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?)
+        guild_id, panel_channel_id, label, category_id, ai_instructions, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?)
       `,
       [
         input.guildId,
         input.panelChannelId,
         input.label,
         input.categoryId,
+        input.aiInstructions,
         toMysqlDateTime(now),
         toMysqlDateTime(now),
       ],
@@ -43,6 +45,7 @@ export class MysqlTicketOptionRepository implements TicketOptionRepository {
       panelChannelId: input.panelChannelId,
       label: input.label,
       categoryId: input.categoryId,
+      aiInstructions: input.aiInstructions,
       createdAt: now,
       updatedAt: now,
     };
@@ -73,6 +76,25 @@ export class MysqlTicketOptionRepository implements TicketOptionRepository {
     return rows.map(toDomain);
   }
 
+  async update(option: TicketOption): Promise<void> {
+    await this.pool.execute(
+      `
+      UPDATE ticket_options
+      SET panel_channel_id = ?, label = ?, category_id = ?, ai_instructions = ?, updated_at = ?
+      WHERE id = ? AND guild_id = ?
+      `,
+      [
+        option.panelChannelId,
+        option.label,
+        option.categoryId,
+        option.aiInstructions,
+        toMysqlDateTime(option.updatedAt),
+        option.id,
+        option.guildId,
+      ],
+    );
+  }
+
   async delete(id: number, guildId: string): Promise<boolean> {
     const [result] = await this.pool.execute<ResultSetHeader>(
       'DELETE FROM ticket_options WHERE id = ? AND guild_id = ?',
@@ -93,6 +115,7 @@ function toDomain(row: TicketOptionRow): TicketOption {
     panelChannelId: String(row.panel_channel_id),
     label: String(row.label),
     categoryId: String(row.category_id),
+    aiInstructions: row.ai_instructions,
     createdAt: toIso(row.created_at),
     updatedAt: toIso(row.updated_at),
   };

@@ -55,4 +55,19 @@ export class AskAiUseCase {
 
     return answer;
   }
+
+  /**
+   * Grava uma mensagem no histórico sem chamar a IA.
+   * Usado quando a equipe fala no ticket: o contexto fica disponível na próxima resposta.
+   */
+  async recordContext(conversationId: string, content: string, maxHistoryMessages: number): Promise<void> {
+    const text = content.trim();
+    if (text.length === 0) {
+      return;
+    }
+
+    const history = await this.conversations.get(conversationId);
+    const nextHistory: ConversationMessage[] = [...history, { role: 'user', content: text }];
+    await this.conversations.replace(conversationId, nextHistory.slice(-maxHistoryMessages));
+  }
 }

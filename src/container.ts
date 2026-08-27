@@ -12,6 +12,8 @@ import type { ListTicketOptionsUseCase } from './application/ListTicketOptionsUs
 import type { OpenTicketUseCase } from './application/OpenTicketUseCase.js';
 import type { PurgeGuildTicketsUseCase } from './application/PurgeGuildTicketsUseCase.js';
 import type { RemoveTicketOptionUseCase } from './application/RemoveTicketOptionUseCase.js';
+import type { ResolveTicketChannelUseCase } from './application/ResolveTicketChannelUseCase.js';
+import type { UpdateTicketOptionInstructionsUseCase } from './application/UpdateTicketOptionInstructionsUseCase.js';
 import type { ResetConversationUseCase } from './application/ResetConversationUseCase.js';
 import type { ResetGuildSettingsUseCase } from './application/ResetGuildSettingsUseCase.js';
 import type { UpdateGuildSettingsUseCase } from './application/UpdateGuildSettingsUseCase.js';
@@ -34,6 +36,8 @@ export interface AppDependencies {
   openTicket: OpenTicketUseCase;
   closeTicket: CloseTicketUseCase;
   purgeGuildTickets: PurgeGuildTicketsUseCase;
+  resolveTicketChannel: ResolveTicketChannelUseCase;
+  updateTicketOptionInstructions: UpdateTicketOptionInstructionsUseCase;
   ticketPanels: TicketPanelRepository;
   cooldown: Cooldown;
 }
