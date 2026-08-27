@@ -11,8 +11,9 @@ Você pode perguntar via slash command (`/ask`) ou mencionando o bot em qualquer
 - `/reset` — apaga o contexto da conversa neste canal
 - `/ping` — latência da API e do WebSocket
 - `/help` — instruções de uso
-- `/config` — configurações persistidas **por servidor** (prompt, modelo, canal, cooldown…)
-- `/ticket` — sistema de tickets configurado pelo **dono do bot** (sala, opção, categoria)
+- `/config` — configurações persistidas **por servidor** (prompt, modelo, canal, cooldown, palavras bloqueadas…)
+- `/ticket` — sistema de tickets configurado pelo **dono do bot** (sala, opção, categoria, IA no canal)
+- Filtro de conteúdo com **Detoxify** (mensagem, contexto da conversa e resposta da IA) + lista de palavras
 - Compatível com qualquer API no formato Chat Completions (OpenAI, Groq, OpenRouter, Ollama)
 - Cooldown por usuário para evitar spam
 - Mensagens longas são fatiadas no limite de 2000 caracteres do Discord
@@ -22,6 +23,7 @@ Você pode perguntar via slash command (`/ask`) ou mencionando o bot em qualquer
 
 - Node.js 20 ou superior
 - MySQL 5.7 ou 8 (XAMPP, WAMP, Docker, servidor remoto)
+- Python 3.10 ou superior (serviço de moderação Detoxify)
 - Uma aplicação no [Discord Developer Portal](https://discord.com/developers/applications)
 - Uma chave de API de um provedor de IA (OpenAI ou compatível)
 
@@ -36,6 +38,8 @@ Você pode perguntar via slash command (`/ask`) ou mencionando o bot em qualquer
    - Bot Permissions: `Send Messages`, `Read Message History`, `Embed Links`, `Use Slash Commands`, `Manage Channels`, `Manage Messages`
 5. Abra a URL gerada e convide o bot para o servidor.
 6. Copie o **Application ID** (General Information) e, se quiser registro instantâneo de comandos, o **ID do servidor** (modo desenvolvedor no Discord → clique direito no servidor → Copiar ID).
+
+`Manage Messages` é necessário para o bot apagar mensagens bloqueadas pelo filtro. `Manage Channels` é necessário para criar e fechar tickets.
 
 ## Instalação
 
@@ -65,21 +69,32 @@ MYSQL_USER=root
 MYSQL_PASSWORD=
 MYSQL_DATABASE=discord_bot_ia
 # BOT_OWNER_ID=seu_discord_user_id   # opcional; se vazio, usa o dono da aplicação no Discord
+
+# Detoxify (padrão: ligado). Rode `npm run moderation` em outro terminal.
+# DETOXIFY_ENABLED=true
+# DETOXIFY_URL=http://127.0.0.1:8091
+# DETOXIFY_THRESHOLD=0.7
+# DETOXIFY_CONTEXT_THRESHOLD=0.6
+# DETOXIFY_CONTEXT_MESSAGES=10
+# DETOXIFY_FAIL_CLOSED=false
+# BLOCKED_WORDS=palavra1,palavra2
 ```
 
 O bot cria o database `MYSQL_DATABASE` e as tabelas na primeira subida, se ainda não existirem. O servidor MySQL precisa estar rodando e o usuário precisa de permissão para criar database (ou crie o schema antes).
 
 ## Filtro de conteúdo (Detoxify)
 
-O Detoxify é um modelo Python. Ele avalia toxicidade (incluindo português, via modelo **multilingual**) e o bot bloqueia:
+O Detoxify é um modelo Python (**multilingual**, com suporte a português). Ele pontua toxicidade e o bot bloqueia em três pontos:
 
-- a mensagem atual **antes** de ir para a IA
-- o **contexto da conversa** (histórico recente + mensagem nova), para pegar intenção tóxica espalhada em várias falas
-- a resposta da IA **depois**, se ela vier imprópria
+1. a **mensagem atual**, antes de ir para a IA
+2. o **contexto da conversa** (histórico recente + mensagem nova), para pegar intenção tóxica espalhada em várias falas
+3. a **resposta da IA**, se ela vier imprópria
 
-Palavras da lista só olham a mensagem atual; o histórico é avaliado só pelo Detoxify. Se o contexto for bloqueado, o histórico da conversa é apagado — use `/reset` e reformule.
+A lista de palavras (`BLOCKED_WORDS` e `/config palavras`) olha só a mensagem atual. O histórico é avaliado só pelo Detoxify. Se o contexto for bloqueado, o histórico da conversa é apagado — use `/reset` e reformule.
 
-Em um terminal:
+O serviço sobe em `http://127.0.0.1:8091`. Deixe-o rodando **junto** com o bot.
+
+Windows (PowerShell):
 
 ```powershell
 python -m venv .venv
@@ -88,16 +103,37 @@ pip install -r moderation/requirements.txt
 npm run moderation
 ```
 
-A primeira execução baixa os pesos do modelo (pode demorar). Deixe esse processo rodando e suba o bot em outro terminal com `npm run dev`.
+Linux / macOS:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r moderation/requirements.txt
+npm run moderation
+```
+
+A primeira execução baixa os pesos do modelo (pode demorar). Em outro terminal, suba o bot com `npm run dev`.
+
+| Variável | Padrão | Função |
+|----------|--------|--------|
+| `DETOXIFY_ENABLED` | `true` | Liga o cliente HTTP do Detoxify no bot |
+| `DETOXIFY_URL` | `http://127.0.0.1:8091` | Endereço do serviço Python |
+| `DETOXIFY_THRESHOLD` | `0.7` | Score mínimo para bloquear a mensagem isolada |
+| `DETOXIFY_CONTEXT_THRESHOLD` | `0.6` | Score mínimo para bloquear o transcript (mais baixo porque o texto maior dilui o score) |
+| `DETOXIFY_CONTEXT_MESSAGES` | `10` | Quantas falas recentes entram no transcript (máx. 20) |
+| `DETOXIFY_FAIL_CLOSED` | `false` | Se `true`, o bot recusa conteúdo quando o Python estiver fora; se `false`, só a lista de palavras vale |
+| `BLOCKED_WORDS` | *(vazio)* | Palavras globais, separadas por vírgula |
+
+No processo Python (opcional): `DETOXIFY_MODEL` (padrão `multilingual`), `DETOXIFY_HOST`, `DETOXIFY_PORT`, `DETOXIFY_CONTEXT_MAX_CHARS` (padrão `2000`, recorte do fim do transcript).
 
 Listas de palavras:
 
 - Global: `BLOCKED_WORDS=termo1,termo2` no `.env`
 - Por servidor: `/config palavras lista: ofensa1, ofensa2`
 
-`DETOXIFY_THRESHOLD` (padrão `0.7`) é o score mínimo da mensagem isolada. `DETOXIFY_CONTEXT_THRESHOLD` (padrão `0.6`) vale para o transcript — um pouco mais baixo porque o texto maior dilui o score. `DETOXIFY_CONTEXT_MESSAGES` (padrão `10`) limita quantas falas entram nesse transcript. Se o serviço Python estiver fora, o bot só usa a lista de palavras — a menos que `DETOXIFY_FAIL_CLOSED=true`.
+Para desligar o Detoxify e ficar só com a lista: `DETOXIFY_ENABLED=false`.
 
-### Outros provedores
+## Outros provedores de IA
 
 | Provedor   | `OPENAI_BASE_URL`                         | Exemplo de modelo        |
 |------------|-------------------------------------------|--------------------------|
@@ -108,10 +144,11 @@ Listas de palavras:
 
 ## Como rodar
 
-Desenvolvimento (recarrega ao salvar):
+Dois processos: o bot Node e, se o Detoxify estiver ligado, o serviço Python.
 
 ```bash
-npm run dev
+npm run moderation    # terminal 1
+npm run dev           # terminal 2 (recarrega ao salvar)
 ```
 
 Produção:
@@ -125,13 +162,13 @@ Os slash commands são registrados na inicialização. Com `DISCORD_GUILD_ID`, a
 
 ## Comandos
 
-| Comando  | Descrição                                              |
-|----------|--------------------------------------------------------|
-| `/ask`   | Envia uma pergunta à IA                                |
-| `/reset` | Limpa o histórico da sua conversa no canal atual       |
-| `/ping`  | Mostra latência                                        |
-| `/help`   | Explica como usar o bot                                |
-| `/config` | Configurações deste servidor (quem tem Gerenciar Servidor) |
+| Comando   | Descrição                                                    |
+|-----------|--------------------------------------------------------------|
+| `/ask`    | Envia uma pergunta à IA                                      |
+| `/reset`  | Limpa o histórico da sua conversa no canal atual             |
+| `/ping`   | Mostra latência                                              |
+| `/help`   | Explica como usar o bot                                      |
+| `/config` | Configurações deste servidor (quem tem Gerenciar Servidor)   |
 | `/ticket` | Tickets: o dono do bot cadastra opções; usuários abrem pelo menu |
 
 O histórico de conversa é por **usuário + canal** e fica em memória. Reiniciar o processo zera as conversas, mas **não** apaga as configurações do servidor.
@@ -155,25 +192,25 @@ O membro escolhe a opção no menu da sala. O bot cria um canal privado na categ
 2. o tipo da opção (Suporte, Denúncia, etc.)
 3. instruções extras da opção, se existirem (`/ticket adicionar instrucao:` ou `/ticket instrucao`)
 
-A equipe pode falar no canal sem disparar a IA; o texto entra no contexto. Se a equipe mencionar o bot, ele responde. `/config ticket-ia` liga ou desliga esse modo. `/ask` e `/reset` no canal do ticket usam o mesmo histórico.
+A equipe pode falar no canal sem disparar a IA; o texto entra no contexto. Se a equipe mencionar o bot, ele responde. `/config ticket-ia` liga ou desliga esse modo. `/ask` e `/reset` no canal do ticket usam o mesmo histórico. A restrição de canal do `/config canal` **não** vale dentro de um ticket.
 
 ### `/config` (por servidor)
 
 Quem tem a permissão **Gerenciar Servidor** pode personalizar o bot. Tudo é gravado no MySQL (tabela `guild_settings`).
 
-| Subcomando        | Efeito                                              |
-|-------------------|-----------------------------------------------------|
-| `/config ver`     | Mostra a configuração efetiva                       |
-| `/config ia`      | Liga/desliga a IA                                   |
-| `/config mencoes` | Liga/desliga respostas a `@bot`                     |
-| `/config prompt`  | Prompt de sistema                                   |
-| `/config modelo`  | Modelo (ex.: `gpt-4o-mini`)                         |
-| `/config canal`   | Restringe a IA a um canal; sem canal, libera todos  |
-| `/config cooldown`| Intervalo mínimo entre perguntas (ms)               |
-| `/config historico` | Tamanho do contexto por conversa                  |
-| `/config ticket-ia` | Liga/desliga a IA automática nos tickets       |
-| `/config palavras` | Palavras proibidas extras deste servidor         |
-| `/config restaurar` | Volta aos padrões globais do `.env`               |
+| Subcomando          | Efeito                                             |
+|---------------------|----------------------------------------------------|
+| `/config ver`       | Mostra a configuração efetiva                      |
+| `/config ia`        | Liga/desliga a IA                                  |
+| `/config mencoes`   | Liga/desliga respostas a `@bot`                    |
+| `/config prompt`    | Prompt de sistema                                  |
+| `/config modelo`    | Modelo (ex.: `gpt-4o-mini`)                        |
+| `/config canal`     | Restringe a IA a um canal; sem canal, libera todos |
+| `/config cooldown`  | Intervalo mínimo entre perguntas (ms)              |
+| `/config historico` | Tamanho do contexto por conversa                   |
+| `/config ticket-ia` | Liga/desliga a IA automática nos tickets           |
+| `/config palavras`  | Palavras proibidas extras deste servidor           |
+| `/config restaurar` | Volta aos padrões globais do `.env`                |
 
 Campos não personalizados herdam `SYSTEM_PROMPT`, `OPENAI_MODEL`, `USER_COOLDOWN_MS` e `MAX_HISTORY_MESSAGES` do `.env`. Se o bot sair do servidor, a linha correspondente é apagada.
 
@@ -183,14 +220,15 @@ A estrutura está descrita em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Resu
 
 ```
 src/
-  domain/           Contratos (IA, histórico, configurações de servidor)
-  application/      Casos de uso (perguntar, resetar, config)
-  infrastructure/   OpenAI, MySQL, memória, cliente Discord
+  domain/           Contratos (IA, histórico, configurações, moderação)
+  application/      Casos de uso (perguntar, resetar, config, tickets)
+  infrastructure/   OpenAI, MySQL, memória, Detoxify HTTP, cliente Discord
   presentation/     Comandos, eventos, embeds
   config/           Variáveis de ambiente
   shared/           Logger, erros, cooldown
   app.ts            Composition root (liga tudo)
   index.ts          Ponto de entrada
+moderation/         Serviço Python do Detoxify (Flask)
 ```
 
 ## Como adicionar um comando
@@ -205,12 +243,13 @@ Implemente `AiProvider` (`src/domain/ai/AiProvider.ts`) e substitua `OpenAiCompa
 
 ## Scripts
 
-| Script            | Função                          |
-|-------------------|---------------------------------|
-| `npm run dev`     | Sobe com hot reload (`tsx`)     |
-| `npm run build`   | Compila para `dist/`            |
-| `npm start`       | Executa o build                 |
-| `npm run typecheck` | Verifica tipos sem emitir JS  |
+| Script                | Função                                        |
+|-----------------------|-----------------------------------------------|
+| `npm run dev`         | Sobe o bot com hot reload (`tsx`)             |
+| `npm run moderation`  | Sobe o serviço Python do Detoxify na porta 8091 |
+| `npm run build`       | Compila para `dist/`                          |
+| `npm start`           | Executa o build                               |
+| `npm run typecheck`   | Verifica tipos sem emitir JS                  |
 
 ## Licença
 
