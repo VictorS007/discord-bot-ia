@@ -94,6 +94,21 @@ const MIGRATIONS: ReadonlyArray<{ version: number; sql: string }> = [
       ADD COLUMN blocked_words TEXT NULL
     `,
   },
+  {
+    version: 8,
+    sql: `
+      CREATE TABLE IF NOT EXISTS guild_prompt_contexts (
+        id BIGINT NOT NULL AUTO_INCREMENT,
+        guild_id VARCHAR(32) NOT NULL,
+        title VARCHAR(80) NOT NULL,
+        content TEXT NOT NULL,
+        created_at DATETIME(3) NOT NULL,
+        updated_at DATETIME(3) NOT NULL,
+        PRIMARY KEY (id),
+        INDEX idx_guild_prompt_contexts_guild (guild_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `,
+  },
 ];
 
 export async function migrate(pool: Pool): Promise<void> {

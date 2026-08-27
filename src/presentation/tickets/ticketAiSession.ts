@@ -14,7 +14,7 @@ export function ticketAiSession(
   return {
     conversationId: ticketConversationId(ctx.ticket.channelId),
     systemPrompt: buildTicketSystemPrompt({
-      guildSystemPrompt: settings.systemPrompt,
+      guildSystemPrompt: settings.effectiveSystemPrompt,
       guildName,
       ticketType: ctx.option?.label ?? 'Atendimento',
       extraInstructions: ctx.option?.aiInstructions ?? null,

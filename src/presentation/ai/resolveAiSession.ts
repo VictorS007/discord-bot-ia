@@ -19,7 +19,7 @@ export function resolveAiSession(input: {
 
   return {
     conversationId: conversationId(input.userId, input.channelId),
-    systemPrompt: input.settings.systemPrompt,
+    systemPrompt: input.settings.effectiveSystemPrompt,
   };
 }
 

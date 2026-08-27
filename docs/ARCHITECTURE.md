@@ -20,6 +20,7 @@ Contratos estáveis.
 - `ConversationStore` — persistência do histórico
 - `conversationId()` — chave estável `canal:usuário`
 - `GuildSettings` / `GuildSettingsRepository` — configuração por servidor Discord
+- `PromptContext` / `PromptContextRepository` — blocos extras anexados ao prompt
 - `TicketOption` / `Ticket` / painel — opções de ticket, canais abertos e message ID do menu
 
 Nada nesta pasta importa `discord.js`, `fetch` ou variáveis de ambiente.
@@ -30,8 +31,9 @@ Casos de uso orquestram o domínio.
 
 - `AskAiUseCase` — anexa a pergunta ao histórico, chama a IA, grava a resposta; filtra entrada, contexto e saída
 - `ResetConversationUseCase` — apaga o histórico de uma chave
-- `GetGuildSettingsUseCase` — mescla a linha do banco com os defaults do `.env`
+- `GetGuildSettingsUseCase` — mescla a linha do banco com os defaults do `.env` e os blocos extras de prompt
 - `UpdateGuildSettingsUseCase` / `ResetGuildSettingsUseCase` — patch ou restore
+- `AddPromptContextUseCase` / `RemovePromptContextUseCase` — empilha ou remove contexto no prompt
 - Casos de uso de ticket — cadastrar opção, abrir, fechar, responder com IA, limpar ao sair do servidor
 
 Eles recebem interfaces no construtor. Não sabem se a IA é OpenAI ou se o histórico está em um `Map`.
@@ -45,6 +47,7 @@ Adaptadores para o mundo externo.
 | `OpenAiCompatibleProvider`   | `AiProvider`          | HTTP Chat Completions                        |
 | `InMemoryConversationStore`  | `ConversationStore`   | `Map` em processo                            |
 | `MysqlGuildSettingsRepository` | `GuildSettingsRepository` | MySQL (`guild_settings`)                 |
+| `MysqlPromptContextRepository` | `PromptContextRepository` | MySQL (`guild_prompt_contexts`)          |
 | `MysqlTicketOptionRepository`  | `TicketOptionRepository`  | MySQL (`ticket_options`)                 |
 | `MysqlTicketRepository`        | `TicketRepository`        | MySQL (`tickets`)                        |
 | `DetoxifyModerator` / `BlockedWordsModerator` | `ContentModerator` | HTTP Detoxify (mensagem + contexto) + lista de palavras |

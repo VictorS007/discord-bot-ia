@@ -11,7 +11,7 @@ Você pode perguntar via slash command (`/ask`) ou mencionando o bot em qualquer
 - `/reset` — apaga o contexto da conversa neste canal
 - `/ping` — latência da API e do WebSocket
 - `/help` — instruções de uso
-- `/config` — configurações persistidas **por servidor** (prompt, modelo, canal, cooldown, palavras bloqueadas…)
+- `/config` — configurações persistidas **por servidor** (prompt, contextos extras, modelo, canal, cooldown, palavras bloqueadas…)
 - `/ticket` — sistema de tickets configurado pelo **dono do bot** (sala, opção, categoria, IA no canal)
 - Filtro de conteúdo com **Detoxify** (mensagem, contexto da conversa e resposta da IA) + lista de palavras
 - Compatível com qualquer API no formato Chat Completions (OpenAI, Groq, OpenRouter, Ollama)
@@ -196,21 +196,26 @@ A equipe pode falar no canal sem disparar a IA; o texto entra no contexto. Se a 
 
 ### `/config` (por servidor)
 
-Quem tem a permissão **Gerenciar Servidor** pode personalizar o bot. Tudo é gravado no MySQL (tabela `guild_settings`).
+Quem tem a permissão **Gerenciar Servidor** pode personalizar o bot. Tudo é gravado no MySQL (tabelas `guild_settings` e `guild_prompt_contexts`).
 
-| Subcomando          | Efeito                                             |
-|---------------------|----------------------------------------------------|
-| `/config ver`       | Mostra a configuração efetiva                      |
-| `/config ia`        | Liga/desliga a IA                                  |
-| `/config mencoes`   | Liga/desliga respostas a `@bot`                    |
-| `/config prompt`    | Prompt de sistema                                  |
-| `/config modelo`    | Modelo (ex.: `gpt-4o-mini`)                        |
-| `/config canal`     | Restringe a IA a um canal; sem canal, libera todos |
-| `/config cooldown`  | Intervalo mínimo entre perguntas (ms)              |
-| `/config historico` | Tamanho do contexto por conversa                   |
-| `/config ticket-ia` | Liga/desliga a IA automática nos tickets           |
-| `/config palavras`  | Palavras proibidas extras deste servidor           |
-| `/config restaurar` | Volta aos padrões globais do `.env`                |
+| Subcomando                   | Efeito                                                       |
+|------------------------------|--------------------------------------------------------------|
+| `/config ver`                | Mostra a configuração efetiva                                |
+| `/config ia`                 | Liga/desliga a IA                                            |
+| `/config mencoes`            | Liga/desliga respostas a `@bot`                              |
+| `/config prompt`             | Prompt de sistema (identidade da IA)                         |
+| `/config contexto adicionar` | Anexa um bloco extra ao prompt (regras, FAQ, tom…)           |
+| `/config contexto listar`    | Lista os blocos extras                                       |
+| `/config contexto remover`   | Remove um bloco pelo ID                                      |
+| `/config modelo`             | Modelo (ex.: `gpt-4o-mini`)                                  |
+| `/config canal`              | Restringe a IA a um canal; sem canal, libera todos           |
+| `/config cooldown`           | Intervalo mínimo entre perguntas (ms)                        |
+| `/config historico`          | Tamanho do contexto por conversa                             |
+| `/config ticket-ia`          | Liga/desliga a IA automática nos tickets                     |
+| `/config palavras`           | Palavras proibidas extras deste servidor                     |
+| `/config restaurar`          | Volta aos padrões globais do `.env` (apaga contextos extras) |
+
+`/config prompt` define a identidade da IA. `/config contexto` **empilha** conhecimento extra sem substituir o prompt: cada bloco vira uma seção no system prompt, no chat e nos tickets. Máximo de 10 blocos por servidor; repetir o mesmo título atualiza o texto.
 
 Campos não personalizados herdam `SYSTEM_PROMPT`, `OPENAI_MODEL`, `USER_COOLDOWN_MS` e `MAX_HISTORY_MESSAGES` do `.env`. Se o bot sair do servidor, a linha correspondente é apagada.
 

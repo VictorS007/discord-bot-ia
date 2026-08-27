@@ -4,6 +4,7 @@
  * A camada de Discord não instancia casos de uso: recebe-os prontos.
  * Isso mantém os handlers testáveis e desacoplados da infraestrutura.
  */
+import type { AddPromptContextUseCase } from './application/AddPromptContextUseCase.js';
 import type { AddTicketOptionUseCase } from './application/AddTicketOptionUseCase.js';
 import type { AskAiUseCase } from './application/AskAiUseCase.js';
 import type { CloseTicketUseCase } from './application/CloseTicketUseCase.js';
@@ -11,6 +12,7 @@ import type { GetGuildSettingsUseCase } from './application/GetGuildSettingsUseC
 import type { ListTicketOptionsUseCase } from './application/ListTicketOptionsUseCase.js';
 import type { OpenTicketUseCase } from './application/OpenTicketUseCase.js';
 import type { PurgeGuildTicketsUseCase } from './application/PurgeGuildTicketsUseCase.js';
+import type { RemovePromptContextUseCase } from './application/RemovePromptContextUseCase.js';
 import type { RemoveTicketOptionUseCase } from './application/RemoveTicketOptionUseCase.js';
 import type { ResolveTicketChannelUseCase } from './application/ResolveTicketChannelUseCase.js';
 import type { UpdateTicketOptionInstructionsUseCase } from './application/UpdateTicketOptionInstructionsUseCase.js';
@@ -30,6 +32,8 @@ export interface AppDependencies {
   getGuildSettings: GetGuildSettingsUseCase;
   updateGuildSettings: UpdateGuildSettingsUseCase;
   resetGuildSettings: ResetGuildSettingsUseCase;
+  addPromptContext: AddPromptContextUseCase;
+  removePromptContext: RemovePromptContextUseCase;
   addTicketOption: AddTicketOptionUseCase;
   removeTicketOption: RemoveTicketOptionUseCase;
   listTicketOptions: ListTicketOptionsUseCase;

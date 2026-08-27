@@ -110,6 +110,15 @@ export class ForbiddenContentError extends AppError {
   }
 }
 
+export class PromptContextLimitError extends AppError {
+  constructor(limit: number) {
+    super(
+      `Limite de ${limit} contextos de prompt`,
+      `Este servidor já tem ${limit} contextos extras — o máximo. Remova um com \`/config contexto remover\`.`,
+    );
+  }
+}
+
 export class ModerationUnavailableError extends AppError {
   constructor() {
     super(

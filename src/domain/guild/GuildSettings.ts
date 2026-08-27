@@ -5,6 +5,7 @@
  * Booleanos sempre têm valor concreto (não herdam de ambiente).
  */
 import { parseBlockedWords } from '../moderation/ContentModerator.js';
+import { composeSystemPrompt, type PromptContext } from './PromptContext.js';
 
 export interface GuildSettings {
   guildId: string;
@@ -45,6 +46,9 @@ export interface ResolvedGuildSettings {
   usingDefaultHistory: boolean;
   ticketAiEnabled: boolean;
   blockedWords: string[];
+  promptContexts: PromptContext[];
+  /** Prompt base + blocos extras — o que de fato vai para a IA. */
+  effectiveSystemPrompt: string;
 }
 
 export type GuildSettingsPatch = {
@@ -63,12 +67,15 @@ export function resolveGuildSettings(
   stored: GuildSettings | null,
   guildId: string,
   defaults: GuildSettingsDefaults,
+  promptContexts: PromptContext[] = [],
 ): ResolvedGuildSettings {
+  const systemPrompt = stored?.systemPrompt ?? defaults.systemPrompt;
+
   return {
     guildId,
     aiEnabled: stored?.aiEnabled ?? true,
     mentionEnabled: stored?.mentionEnabled ?? true,
-    systemPrompt: stored?.systemPrompt ?? defaults.systemPrompt,
+    systemPrompt,
     model: stored?.model ?? defaults.model,
     allowedChannelId: stored?.allowedChannelId ?? null,
     cooldownMs: stored?.cooldownMs ?? defaults.cooldownMs,
@@ -79,6 +86,8 @@ export function resolveGuildSettings(
     usingDefaultHistory: stored?.maxHistoryMessages == null,
     ticketAiEnabled: stored?.ticketAiEnabled ?? true,
     blockedWords: parseBlockedWords(stored?.blockedWords),
+    promptContexts,
+    effectiveSystemPrompt: composeSystemPrompt(systemPrompt, promptContexts),
   };
 }
 

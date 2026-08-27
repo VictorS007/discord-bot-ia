@@ -4,6 +4,7 @@
  * Este é o único lugar que conhece implementações concretas (OpenAI, MySQL, etc.).
  */
 import { Events } from 'discord.js';
+import { AddPromptContextUseCase } from './application/AddPromptContextUseCase.js';
 import { AddTicketOptionUseCase } from './application/AddTicketOptionUseCase.js';
 import { AskAiUseCase } from './application/AskAiUseCase.js';
 import { CloseTicketUseCase } from './application/CloseTicketUseCase.js';
@@ -11,6 +12,7 @@ import { GetGuildSettingsUseCase } from './application/GetGuildSettingsUseCase.j
 import { ListTicketOptionsUseCase } from './application/ListTicketOptionsUseCase.js';
 import { OpenTicketUseCase } from './application/OpenTicketUseCase.js';
 import { PurgeGuildTicketsUseCase } from './application/PurgeGuildTicketsUseCase.js';
+import { RemovePromptContextUseCase } from './application/RemovePromptContextUseCase.js';
 import { RemoveTicketOptionUseCase } from './application/RemoveTicketOptionUseCase.js';
 import { ResolveTicketChannelUseCase } from './application/ResolveTicketChannelUseCase.js';
 import { UpdateTicketOptionInstructionsUseCase } from './application/UpdateTicketOptionInstructionsUseCase.js';
@@ -27,6 +29,7 @@ import { InMemoryConversationStore } from './infrastructure/conversation/InMemor
 import { openMysql } from './infrastructure/database/openMysql.js';
 import { createDiscordClient } from './infrastructure/discord/createClient.js';
 import { MysqlGuildSettingsRepository } from './infrastructure/guild/MysqlGuildSettingsRepository.js';
+import { MysqlPromptContextRepository } from './infrastructure/guild/MysqlPromptContextRepository.js';
 import { BlockedWordsModerator } from './infrastructure/moderation/BlockedWordsModerator.js';
 import { CompositeContentModerator } from './infrastructure/moderation/CompositeContentModerator.js';
 import { DetoxifyModerator } from './infrastructure/moderation/DetoxifyModerator.js';
@@ -53,6 +56,7 @@ export async function startBot(env: Env): Promise<void> {
   logger.info('MySQL pronto', { host: env.MYSQL_HOST, database: env.MYSQL_DATABASE });
 
   const guildSettings = new MysqlGuildSettingsRepository(pool);
+  const promptContexts = new MysqlPromptContextRepository(pool);
   const ticketOptions = new MysqlTicketOptionRepository(pool);
   const tickets = new MysqlTicketRepository(pool);
   const ticketPanels = new MysqlTicketPanelRepository(pool);
@@ -73,9 +77,11 @@ export async function startBot(env: Env): Promise<void> {
     logger,
     askAi: new AskAiUseCase(ai, conversations, moderator),
     resetConversation: new ResetConversationUseCase(conversations),
-    getGuildSettings: new GetGuildSettingsUseCase(guildSettings, defaults),
-    updateGuildSettings: new UpdateGuildSettingsUseCase(guildSettings, defaults),
-    resetGuildSettings: new ResetGuildSettingsUseCase(guildSettings),
+    getGuildSettings: new GetGuildSettingsUseCase(guildSettings, promptContexts, defaults),
+    updateGuildSettings: new UpdateGuildSettingsUseCase(guildSettings, promptContexts, defaults),
+    resetGuildSettings: new ResetGuildSettingsUseCase(guildSettings, promptContexts),
+    addPromptContext: new AddPromptContextUseCase(promptContexts),
+    removePromptContext: new RemovePromptContextUseCase(promptContexts),
     addTicketOption: new AddTicketOptionUseCase(ticketOptions),
     removeTicketOption: new RemoveTicketOptionUseCase(ticketOptions),
     listTicketOptions: new ListTicketOptionsUseCase(ticketOptions),

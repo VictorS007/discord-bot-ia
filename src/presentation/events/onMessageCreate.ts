@@ -50,7 +50,7 @@ export async function onMessageCreate(message: Message, deps: AppDependencies): 
   await replyToMessageWithAi(message, deps, {
     conversationId: conversationId(message.author.id, message.channelId),
     question,
-    systemPrompt: settings.systemPrompt,
+    systemPrompt: settings.effectiveSystemPrompt,
     model: settings.model,
     maxHistoryMessages: settings.maxHistoryMessages,
     cooldownMs: settings.cooldownMs,

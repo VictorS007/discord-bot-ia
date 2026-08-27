@@ -110,6 +110,37 @@ export const configCommand: Command = {
             .setDescription('Separadas por vírgula. Omita para ver. Envie um espaço para limpar.')
             .setMaxLength(1500),
         ),
+    )
+    .addSubcommandGroup((group) =>
+      group
+        .setName('contexto')
+        .setDescription('Blocos extras anexados ao prompt da IA (regras, FAQ, tom…).')
+        .addSubcommand((sub) =>
+          sub
+            .setName('adicionar')
+            .setDescription('Adiciona um bloco de contexto. Mesmo título atualiza o texto.')
+            .addStringOption((option) =>
+              option.setName('titulo').setDescription('Nome curto deste bloco.').setRequired(true).setMaxLength(80),
+            )
+            .addStringOption((option) =>
+              option
+                .setName('texto')
+                .setDescription('Conteúdo que a IA deve considerar.')
+                .setRequired(true)
+                .setMaxLength(1500),
+            ),
+        )
+        .addSubcommand((sub) =>
+          sub
+            .setName('remover')
+            .setDescription('Remove um bloco pelo ID (/config contexto listar).')
+            .addIntegerOption((option) =>
+              option.setName('id').setDescription('ID do contexto.').setRequired(true).setMinValue(1),
+            ),
+        )
+        .addSubcommand((sub) =>
+          sub.setName('listar').setDescription('Lista os blocos extras deste servidor.'),
+        ),
     ),
 
   async execute(interaction: ChatInputCommandInteraction, deps: AppDependencies) {
@@ -128,9 +159,15 @@ export const configCommand: Command = {
       return;
     }
 
+    const group = interaction.options.getSubcommandGroup(false);
     const subcommand = interaction.options.getSubcommand();
 
     try {
+      if (group === 'contexto') {
+        await handleContexto(interaction, guildId, deps, subcommand);
+        return;
+      }
+
       if (subcommand === 'ver') {
         const settings = await deps.getGuildSettings.execute(guildId);
         await interaction.reply({ embeds: [settingsEmbed(settings)], ephemeral: true });
@@ -162,7 +199,7 @@ export const configCommand: Command = {
         await deps.resetGuildSettings.execute(guildId);
         const settings = await deps.getGuildSettings.execute(guildId);
         await interaction.reply({
-          embeds: [infoEmbed('Configurações restauradas', 'Este servidor voltou aos padrões globais do bot.')],
+          embeds: [infoEmbed('Configurações restauradas', 'Este servidor voltou aos padrões globais. Os contextos extras do prompt também foram apagados.')],
           ephemeral: true,
         });
         await interaction.followUp({ embeds: [settingsEmbed(settings)], ephemeral: true });
@@ -179,6 +216,7 @@ export const configCommand: Command = {
       const message = error instanceof AppError ? error.userMessage : 'Não consegui salvar a configuração.';
       deps.logger.error('Falha no comando /config', {
         error: error instanceof Error ? error.message : String(error),
+        group,
         subcommand,
       });
 
@@ -244,15 +282,65 @@ async function applySubcommand(
   }
 }
 
+async function handleContexto(
+  interaction: ChatInputCommandInteraction,
+  guildId: string,
+  deps: AppDependencies,
+  subcommand: string,
+): Promise<void> {
+  if (subcommand === 'listar') {
+    const settings = await deps.getGuildSettings.execute(guildId);
+    await interaction.reply({
+      embeds: [infoEmbed('Contextos do prompt', formatPromptContexts(settings.promptContexts))],
+      ephemeral: true,
+    });
+    return;
+  }
+
+  if (subcommand === 'adicionar') {
+    const titulo = interaction.options.getString('titulo', true);
+    const texto = interaction.options.getString('texto', true);
+    const result = await deps.addPromptContext.execute({ guildId, title: titulo, content: texto });
+    const verb = result.updated ? 'atualizado' : 'adicionado';
+    await interaction.reply({
+      embeds: [
+        infoEmbed(
+          `Contexto ${verb}`,
+          `**#${result.context.id} · ${result.context.title}**\nA IA já considera este bloco no prompt (chat e tickets).`,
+        ),
+      ],
+      ephemeral: true,
+    });
+    return;
+  }
+
+  if (subcommand === 'remover') {
+    const id = interaction.options.getInteger('id', true);
+    const removed = await deps.removePromptContext.execute(id, guildId);
+    await interaction.reply({
+      embeds: [infoEmbed('Contexto removido', `**#${removed.id} · ${removed.title}** não entra mais no prompt.`)],
+      ephemeral: true,
+    });
+    return;
+  }
+
+  throw new Error(`Subcomando de contexto desconhecido: ${subcommand}`);
+}
+
 function settingsEmbed(settings: ResolvedGuildSettings) {
   const promptPreview =
     settings.systemPrompt.length > 400 ? `${settings.systemPrompt.slice(0, 397)}...` : settings.systemPrompt;
+  const contextTitles =
+    settings.promptContexts.length === 0
+      ? 'nenhum'
+      : settings.promptContexts.map((item) => `#${item.id} ${item.title}`).join(', ');
 
   const description = [
     `**IA:** ${onOff(settings.aiEnabled)}`,
     `**Menções:** ${onOff(settings.mentionEnabled)}`,
     `**IA nos tickets:** ${onOff(settings.ticketAiEnabled)}`,
     `**Palavras proibidas (servidor):** ${settings.blockedWords.length} termo(s)`,
+    `**Contextos extras:** ${settings.promptContexts.length} — ${contextTitles}`,
     `**Modelo:** \`${settings.model}\`${settings.usingDefaultModel ? ' *(padrão global)*' : ''}`,
     `**Canal:** ${settings.allowedChannelId ? `<#${settings.allowedChannelId}>` : 'todos'}`,
     `**Cooldown:** ${settings.cooldownMs}ms${settings.usingDefaultCooldown ? ' *(padrão global)*' : ''}`,
@@ -274,4 +362,17 @@ function formatBlockedWords(words: string[]): string {
   }
 
   return words.map((word) => `\`${word}\``).join(', ');
+}
+
+function formatPromptContexts(contexts: ResolvedGuildSettings['promptContexts']): string {
+  if (contexts.length === 0) {
+    return 'Nenhum contexto extra. Use `/config contexto adicionar` para anexar regras, FAQ ou tom ao prompt, sem substituir o `/config prompt`.';
+  }
+
+  return contexts
+    .map((item) => {
+      const preview = item.content.length > 180 ? `${item.content.slice(0, 177)}...` : item.content;
+      return `**#${item.id} · ${item.title}**\n${preview}`;
+    })
+    .join('\n\n');
 }

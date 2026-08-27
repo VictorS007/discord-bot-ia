@@ -8,10 +8,12 @@ import {
   type ResolvedGuildSettings,
 } from '../domain/guild/GuildSettings.js';
 import type { GuildSettingsRepository } from '../domain/guild/GuildSettingsRepository.js';
+import type { PromptContextRepository } from '../domain/guild/PromptContextRepository.js';
 
 export class GetGuildSettingsUseCase {
   constructor(
     private readonly repository: GuildSettingsRepository,
+    private readonly promptContexts: PromptContextRepository,
     private readonly defaults: GuildSettingsDefaults,
   ) {}
 
@@ -20,7 +22,11 @@ export class GetGuildSettingsUseCase {
       return resolveGuildSettings(null, 'dm', this.defaults);
     }
 
-    const stored = await this.repository.findByGuildId(guildId);
-    return resolveGuildSettings(stored, guildId, this.defaults);
+    const [stored, contexts] = await Promise.all([
+      this.repository.findByGuildId(guildId),
+      this.promptContexts.listByGuild(guildId),
+    ]);
+
+    return resolveGuildSettings(stored, guildId, this.defaults, contexts);
   }
 }

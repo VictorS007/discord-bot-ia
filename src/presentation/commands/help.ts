@@ -11,7 +11,7 @@ const HELP_TEXT = [
   '• `/reset` — apaga o histórico da sua conversa neste canal',
   '• `/ping` — latência do bot',
   '• `/help` — esta mensagem',
-  '• `/config` — configurações por servidor (administradores)',
+  '• `/config` — configurações por servidor (administradores), inclusive contextos extras no prompt',
   '• `/ticket` — painel de tickets; a IA atende quem abriu o canal',
   '',
   'Cada usuário tem um histórico próprio por canal. Em tickets, o histórico é do canal inteiro (você + equipe + IA).',
