@@ -4,6 +4,8 @@
  * Campos `null` significam “usar o padrão global do .env”.
  * Booleanos sempre têm valor concreto (não herdam de ambiente).
  */
+import { parseBlockedWords } from '../moderation/ContentModerator.js';
+
 export interface GuildSettings {
   guildId: string;
   aiEnabled: boolean;
@@ -14,6 +16,7 @@ export interface GuildSettings {
   cooldownMs: number | null;
   maxHistoryMessages: number | null;
   ticketAiEnabled: boolean;
+  blockedWords: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -41,6 +44,7 @@ export interface ResolvedGuildSettings {
   usingDefaultCooldown: boolean;
   usingDefaultHistory: boolean;
   ticketAiEnabled: boolean;
+  blockedWords: string[];
 }
 
 export type GuildSettingsPatch = {
@@ -52,6 +56,7 @@ export type GuildSettingsPatch = {
   cooldownMs?: number | null;
   maxHistoryMessages?: number | null;
   ticketAiEnabled?: boolean;
+  blockedWords?: string | null;
 };
 
 export function resolveGuildSettings(
@@ -73,6 +78,7 @@ export function resolveGuildSettings(
     usingDefaultCooldown: stored?.cooldownMs == null,
     usingDefaultHistory: stored?.maxHistoryMessages == null,
     ticketAiEnabled: stored?.ticketAiEnabled ?? true,
+    blockedWords: parseBlockedWords(stored?.blockedWords),
   };
 }
 
@@ -94,6 +100,7 @@ export function applyGuildSettingsPatch(
     maxHistoryMessages:
       patch.maxHistoryMessages !== undefined ? patch.maxHistoryMessages : (current?.maxHistoryMessages ?? null),
     ticketAiEnabled: patch.ticketAiEnabled ?? current?.ticketAiEnabled ?? true,
+    blockedWords: patch.blockedWords !== undefined ? patch.blockedWords : (current?.blockedWords ?? null),
     createdAt: current?.createdAt ?? nowIso,
     updatedAt: nowIso,
   };

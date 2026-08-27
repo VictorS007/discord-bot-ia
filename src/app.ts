@@ -20,11 +20,16 @@ import { UpdateGuildSettingsUseCase } from './application/UpdateGuildSettingsUse
 import type { Env } from './config/env.js';
 import type { AppDependencies } from './container.js';
 import type { GuildSettingsDefaults } from './domain/guild/GuildSettings.js';
+import type { ContentModerator } from './domain/moderation/ContentModerator.js';
+import { parseBlockedWords } from './domain/moderation/ContentModerator.js';
 import { OpenAiCompatibleProvider } from './infrastructure/ai/OpenAiCompatibleProvider.js';
 import { InMemoryConversationStore } from './infrastructure/conversation/InMemoryConversationStore.js';
 import { openMysql } from './infrastructure/database/openMysql.js';
 import { createDiscordClient } from './infrastructure/discord/createClient.js';
 import { MysqlGuildSettingsRepository } from './infrastructure/guild/MysqlGuildSettingsRepository.js';
+import { BlockedWordsModerator } from './infrastructure/moderation/BlockedWordsModerator.js';
+import { CompositeContentModerator } from './infrastructure/moderation/CompositeContentModerator.js';
+import { DetoxifyModerator } from './infrastructure/moderation/DetoxifyModerator.js';
 import { MysqlTicketOptionRepository } from './infrastructure/ticket/MysqlTicketOptionRepository.js';
 import { MysqlTicketPanelRepository } from './infrastructure/ticket/MysqlTicketPanelRepository.js';
 import { MysqlTicketRepository } from './infrastructure/ticket/MysqlTicketRepository.js';
@@ -61,11 +66,12 @@ export async function startBot(env: Env): Promise<void> {
 
   const conversations = new InMemoryConversationStore();
   const ai = new OpenAiCompatibleProvider(env.OPENAI_API_KEY, env.OPENAI_BASE_URL, logger);
+  const moderator = createContentModerator(env, logger);
 
   const deps: AppDependencies = {
     env,
     logger,
-    askAi: new AskAiUseCase(ai, conversations),
+    askAi: new AskAiUseCase(ai, conversations, moderator),
     resetConversation: new ResetConversationUseCase(conversations),
     getGuildSettings: new GetGuildSettingsUseCase(guildSettings, defaults),
     updateGuildSettings: new UpdateGuildSettingsUseCase(guildSettings, defaults),
@@ -128,4 +134,31 @@ export async function startBot(env: Env): Promise<void> {
     await pool.end();
     throw error;
   }
+}
+
+function createContentModerator(env: Env, logger: Logger): CompositeContentModerator {
+  const layers: ContentModerator[] = [new BlockedWordsModerator(parseBlockedWords(env.BLOCKED_WORDS))];
+
+  if (env.DETOXIFY_ENABLED) {
+    layers.push(
+      new DetoxifyModerator(
+        env.DETOXIFY_URL,
+        env.DETOXIFY_THRESHOLD,
+        env.DETOXIFY_CONTEXT_THRESHOLD,
+        env.DETOXIFY_CONTEXT_MESSAGES,
+        env.DETOXIFY_FAIL_CLOSED,
+        logger,
+      ),
+    );
+    logger.info('Filtro Detoxify ativo', {
+      url: env.DETOXIFY_URL,
+      limiar: env.DETOXIFY_THRESHOLD,
+      limiarContexto: env.DETOXIFY_CONTEXT_THRESHOLD,
+      mensagensContexto: env.DETOXIFY_CONTEXT_MESSAGES,
+    });
+  } else {
+    logger.warn('Detoxify desligado — só a lista de palavras bloqueadas será usada');
+  }
+
+  return new CompositeContentModerator(layers);
 }

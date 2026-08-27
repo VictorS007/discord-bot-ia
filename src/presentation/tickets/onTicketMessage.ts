@@ -9,7 +9,10 @@ import { PermissionFlagsBits, type Message } from 'discord.js';
 import { formatTicketUserMessage } from '../../application/buildTicketSystemPrompt.js';
 import type { TicketChannelContext } from '../../application/ResolveTicketChannelUseCase.js';
 import type { AppDependencies } from '../../container.js';
+import { ForbiddenContentError } from '../../shared/errors.js';
 import { replyToMessageWithAi } from '../ai/replyToMessageWithAi.js';
+import { tryDeleteForbiddenMessage } from '../ai/tryDeleteForbiddenMessage.js';
+import { errorEmbed } from '../embeds.js';
 import { ticketAiSession } from './ticketAiSession.js';
 
 export async function onTicketMessage(
@@ -51,15 +54,27 @@ export async function onTicketMessage(
       model: settings.model,
       maxHistoryMessages: settings.maxHistoryMessages,
       cooldownMs: settings.cooldownMs,
+      extraBlockedWords: settings.blockedWords,
     });
     return;
   }
 
   if (settings.ticketAiEnabled) {
-    await deps.askAi.recordContext(
-      conversationId,
-      formatTicketUserMessage('equipe', message.author.username, raw),
-      settings.maxHistoryMessages,
-    );
+    try {
+      await deps.askAi.recordContext(
+        conversationId,
+        formatTicketUserMessage('equipe', message.author.username, raw),
+        settings.maxHistoryMessages,
+        settings.blockedWords,
+      );
+    } catch (error) {
+      if (error instanceof ForbiddenContentError) {
+        await tryDeleteForbiddenMessage(message);
+        await message.reply({ embeds: [errorEmbed(error.userMessage)] });
+        return;
+      }
+
+      throw error;
+    }
   }
 }

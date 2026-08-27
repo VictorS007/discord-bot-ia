@@ -96,3 +96,25 @@ export class TicketNotFoundError extends AppError {
     super('Ticket não encontrado', 'Não achei um ticket aberto neste canal.');
   }
 }
+
+export class ForbiddenContentError extends AppError {
+  constructor(kind: 'input' | 'output' | 'context' = 'input') {
+    super(
+      `Conteúdo bloqueado (${kind})`,
+      kind === 'output'
+        ? 'A resposta foi bloqueada pelo filtro de conteúdo.'
+        : kind === 'context'
+          ? 'Essa conversa tomou um rumo que não posso continuar. Use `/reset` e reformule.'
+          : 'Essa mensagem contém conteúdo não permitido.',
+    );
+  }
+}
+
+export class ModerationUnavailableError extends AppError {
+  constructor() {
+    super(
+      'Serviço Detoxify indisponível',
+      'O filtro de conteúdo está indisponível agora. Tente de novo em instantes.',
+    );
+  }
+}

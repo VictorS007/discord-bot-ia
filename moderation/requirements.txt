@@ -1,0 +1,2 @@
+detoxify>=0.5.2
+flask>=3.0.3

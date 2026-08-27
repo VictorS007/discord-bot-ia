@@ -62,8 +62,9 @@ export const askCommand: Command = {
         question,
         systemPrompt: session.systemPrompt,
         model: settings.model,
-        maxHistoryMessages: settings.maxHistoryMessages,
-      });
+      maxHistoryMessages: settings.maxHistoryMessages,
+      extraBlockedWords: settings.blockedWords,
+    });
 
       const [first, ...rest] = splitMessage(answer, DISCORD_MESSAGE_LIMIT);
 

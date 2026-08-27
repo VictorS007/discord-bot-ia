@@ -41,6 +41,20 @@ const envSchema = z.object({
     .default('discord_bot_ia'),
 
   BOT_OWNER_ID: z.string().optional(),
+
+  DETOXIFY_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((value) => value === 'true'),
+  DETOXIFY_URL: z.string().url().default('http://127.0.0.1:8091'),
+  DETOXIFY_THRESHOLD: z.coerce.number().min(0).max(1).default(0.7),
+  DETOXIFY_CONTEXT_THRESHOLD: z.coerce.number().min(0).max(1).default(0.6),
+  DETOXIFY_CONTEXT_MESSAGES: z.coerce.number().int().positive().max(20).default(10),
+  DETOXIFY_FAIL_CLOSED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
+  BLOCKED_WORDS: z.string().default(''),
 });
 
 export type Env = z.infer<typeof envSchema>;

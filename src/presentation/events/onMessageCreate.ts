@@ -54,5 +54,6 @@ export async function onMessageCreate(message: Message, deps: AppDependencies): 
     model: settings.model,
     maxHistoryMessages: settings.maxHistoryMessages,
     cooldownMs: settings.cooldownMs,
+    extraBlockedWords: settings.blockedWords,
   });
 }

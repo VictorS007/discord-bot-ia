@@ -28,7 +28,7 @@ Nada nesta pasta importa `discord.js`, `fetch` ou variáveis de ambiente.
 
 Casos de uso orquestram o domínio.
 
-- `AskAiUseCase` — anexa a pergunta ao histórico, chama a IA, grava a resposta
+- `AskAiUseCase` — anexa a pergunta ao histórico, chama a IA, grava a resposta; filtra entrada, contexto e saída
 - `ResetConversationUseCase` — apaga o histórico de uma chave
 - `GetGuildSettingsUseCase` — mescla a linha do banco com os defaults do `.env`
 - `UpdateGuildSettingsUseCase` / `ResetGuildSettingsUseCase` — patch ou restore
@@ -47,7 +47,7 @@ Adaptadores para o mundo externo.
 | `MysqlGuildSettingsRepository` | `GuildSettingsRepository` | MySQL (`guild_settings`)                 |
 | `MysqlTicketOptionRepository`  | `TicketOptionRepository`  | MySQL (`ticket_options`)                 |
 | `MysqlTicketRepository`        | `TicketRepository`        | MySQL (`tickets`)                        |
-| `MysqlTicketPanelRepository`   | `TicketPanelRepository`   | MySQL (`ticket_panels`)                  |
+| `DetoxifyModerator` / `BlockedWordsModerator` | `ContentModerator` | HTTP Detoxify (mensagem + contexto) + lista de palavras |
 | `createDiscordClient`        | —                     | Intents e client do discord.js               |
 | `registerSlashCommands`      | —                     | Publica comandos na API do Discord           |
 
@@ -65,8 +65,8 @@ Fluxo de uma pergunta:
 usuário → /ask ou menção
        → presentation (cooldown, defer, split de mensagem)
        → AskAiUseCase
-       → ConversationStore + AiProvider
-       → resposta no canal
+       → ContentModerator (mensagem + histórico) → ConversationStore + AiProvider
+       → ContentModerator (resposta + contexto) → resposta no canal
 ```
 
 ### `config/` e `shared/`

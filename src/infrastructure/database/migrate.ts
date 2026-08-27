@@ -87,6 +87,13 @@ const MIGRATIONS: ReadonlyArray<{ version: number; sql: string }> = [
       ADD COLUMN ai_instructions TEXT NULL
     `,
   },
+  {
+    version: 7,
+    sql: `
+      ALTER TABLE guild_settings
+      ADD COLUMN blocked_words TEXT NULL
+    `,
+  },
 ];
 
 export async function migrate(pool: Pool): Promise<void> {

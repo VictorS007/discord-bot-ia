@@ -33,7 +33,7 @@ Você pode perguntar via slash command (`/ask`) ou mencionando o bot em qualquer
    - **Message Content Intent** (obrigatório para responder a menções)
 4. Em **OAuth2 → URL Generator**, marque:
    - Scopes: `bot`, `applications.commands`
-   - Bot Permissions: `Send Messages`, `Read Message History`, `Embed Links`, `Use Slash Commands`, `Manage Channels`
+   - Bot Permissions: `Send Messages`, `Read Message History`, `Embed Links`, `Use Slash Commands`, `Manage Channels`, `Manage Messages`
 5. Abra a URL gerada e convide o bot para o servidor.
 6. Copie o **Application ID** (General Information) e, se quiser registro instantâneo de comandos, o **ID do servidor** (modo desenvolvedor no Discord → clique direito no servidor → Copiar ID).
 
@@ -68,6 +68,34 @@ MYSQL_DATABASE=discord_bot_ia
 ```
 
 O bot cria o database `MYSQL_DATABASE` e as tabelas na primeira subida, se ainda não existirem. O servidor MySQL precisa estar rodando e o usuário precisa de permissão para criar database (ou crie o schema antes).
+
+## Filtro de conteúdo (Detoxify)
+
+O Detoxify é um modelo Python. Ele avalia toxicidade (incluindo português, via modelo **multilingual**) e o bot bloqueia:
+
+- a mensagem atual **antes** de ir para a IA
+- o **contexto da conversa** (histórico recente + mensagem nova), para pegar intenção tóxica espalhada em várias falas
+- a resposta da IA **depois**, se ela vier imprópria
+
+Palavras da lista só olham a mensagem atual; o histórico é avaliado só pelo Detoxify. Se o contexto for bloqueado, o histórico da conversa é apagado — use `/reset` e reformule.
+
+Em um terminal:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r moderation/requirements.txt
+npm run moderation
+```
+
+A primeira execução baixa os pesos do modelo (pode demorar). Deixe esse processo rodando e suba o bot em outro terminal com `npm run dev`.
+
+Listas de palavras:
+
+- Global: `BLOCKED_WORDS=termo1,termo2` no `.env`
+- Por servidor: `/config palavras lista: ofensa1, ofensa2`
+
+`DETOXIFY_THRESHOLD` (padrão `0.7`) é o score mínimo da mensagem isolada. `DETOXIFY_CONTEXT_THRESHOLD` (padrão `0.6`) vale para o transcript — um pouco mais baixo porque o texto maior dilui o score. `DETOXIFY_CONTEXT_MESSAGES` (padrão `10`) limita quantas falas entram nesse transcript. Se o serviço Python estiver fora, o bot só usa a lista de palavras — a menos que `DETOXIFY_FAIL_CLOSED=true`.
 
 ### Outros provedores
 
@@ -144,6 +172,7 @@ Quem tem a permissão **Gerenciar Servidor** pode personalizar o bot. Tudo é gr
 | `/config cooldown`| Intervalo mínimo entre perguntas (ms)               |
 | `/config historico` | Tamanho do contexto por conversa                  |
 | `/config ticket-ia` | Liga/desliga a IA automática nos tickets       |
+| `/config palavras` | Palavras proibidas extras deste servidor         |
 | `/config restaurar` | Volta aos padrões globais do `.env`               |
 
 Campos não personalizados herdam `SYSTEM_PROMPT`, `OPENAI_MODEL`, `USER_COOLDOWN_MS` e `MAX_HISTORY_MESSAGES` do `.env`. Se o bot sair do servidor, a linha correspondente é apagada.

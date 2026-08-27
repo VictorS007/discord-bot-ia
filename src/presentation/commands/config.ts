@@ -99,6 +99,17 @@ export const configCommand: Command = {
         .addBooleanOption((option) =>
           option.setName('ativado').setDescription('A IA deve responder sozinha nos tickets?').setRequired(true),
         ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('palavras')
+        .setDescription('Lista extra de palavras proibidas neste servidor (além do Detoxify).')
+        .addStringOption((option) =>
+          option
+            .setName('lista')
+            .setDescription('Separadas por vírgula. Omita para ver. Envie um espaço para limpar.')
+            .setMaxLength(1500),
+        ),
     ),
 
   async execute(interaction: ChatInputCommandInteraction, deps: AppDependencies) {
@@ -123,6 +134,27 @@ export const configCommand: Command = {
       if (subcommand === 'ver') {
         const settings = await deps.getGuildSettings.execute(guildId);
         await interaction.reply({ embeds: [settingsEmbed(settings)], ephemeral: true });
+        return;
+      }
+
+      if (subcommand === 'palavras') {
+        const lista = interaction.options.getString('lista');
+        if (lista === null) {
+          const settings = await deps.getGuildSettings.execute(guildId);
+          await interaction.reply({
+            embeds: [infoEmbed('Palavras proibidas', formatBlockedWords(settings.blockedWords))],
+            ephemeral: true,
+          });
+          return;
+        }
+
+        const updated = await deps.updateGuildSettings.execute(guildId, {
+          blockedWords: lista.trim().length === 0 ? null : lista.trim(),
+        });
+        await interaction.reply({
+          embeds: [infoEmbed('Palavras atualizadas', formatBlockedWords(updated.blockedWords))],
+          ephemeral: true,
+        });
         return;
       }
 
@@ -220,6 +252,7 @@ function settingsEmbed(settings: ResolvedGuildSettings) {
     `**IA:** ${onOff(settings.aiEnabled)}`,
     `**Menções:** ${onOff(settings.mentionEnabled)}`,
     `**IA nos tickets:** ${onOff(settings.ticketAiEnabled)}`,
+    `**Palavras proibidas (servidor):** ${settings.blockedWords.length} termo(s)`,
     `**Modelo:** \`${settings.model}\`${settings.usingDefaultModel ? ' *(padrão global)*' : ''}`,
     `**Canal:** ${settings.allowedChannelId ? `<#${settings.allowedChannelId}>` : 'todos'}`,
     `**Cooldown:** ${settings.cooldownMs}ms${settings.usingDefaultCooldown ? ' *(padrão global)*' : ''}`,
@@ -233,4 +266,12 @@ function settingsEmbed(settings: ResolvedGuildSettings) {
 
 function onOff(value: boolean): string {
   return value ? 'ligada' : 'desligada';
+}
+
+function formatBlockedWords(words: string[]): string {
+  if (words.length === 0) {
+    return 'Nenhuma palavra extra neste servidor. Ainda valem a lista global (`BLOCKED_WORDS`) e o Detoxify.';
+  }
+
+  return words.map((word) => `\`${word}\``).join(', ');
 }
