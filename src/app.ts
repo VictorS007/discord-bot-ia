@@ -4,8 +4,14 @@
  * Este é o único lugar que conhece implementações concretas (OpenAI, MySQL, etc.).
  */
 import { Events } from 'discord.js';
+import { AddTicketOptionUseCase } from './application/AddTicketOptionUseCase.js';
 import { AskAiUseCase } from './application/AskAiUseCase.js';
+import { CloseTicketUseCase } from './application/CloseTicketUseCase.js';
 import { GetGuildSettingsUseCase } from './application/GetGuildSettingsUseCase.js';
+import { ListTicketOptionsUseCase } from './application/ListTicketOptionsUseCase.js';
+import { OpenTicketUseCase } from './application/OpenTicketUseCase.js';
+import { PurgeGuildTicketsUseCase } from './application/PurgeGuildTicketsUseCase.js';
+import { RemoveTicketOptionUseCase } from './application/RemoveTicketOptionUseCase.js';
 import { ResetConversationUseCase } from './application/ResetConversationUseCase.js';
 import { ResetGuildSettingsUseCase } from './application/ResetGuildSettingsUseCase.js';
 import { UpdateGuildSettingsUseCase } from './application/UpdateGuildSettingsUseCase.js';
@@ -17,6 +23,10 @@ import { InMemoryConversationStore } from './infrastructure/conversation/InMemor
 import { openMysql } from './infrastructure/database/openMysql.js';
 import { createDiscordClient } from './infrastructure/discord/createClient.js';
 import { MysqlGuildSettingsRepository } from './infrastructure/guild/MysqlGuildSettingsRepository.js';
+import { MysqlTicketOptionRepository } from './infrastructure/ticket/MysqlTicketOptionRepository.js';
+import { MysqlTicketPanelRepository } from './infrastructure/ticket/MysqlTicketPanelRepository.js';
+import { MysqlTicketRepository } from './infrastructure/ticket/MysqlTicketRepository.js';
+import { onChannelDelete } from './presentation/events/onChannelDelete.js';
 import { onGuildDelete } from './presentation/events/onGuildDelete.js';
 import { onInteractionCreate } from './presentation/events/onInteractionCreate.js';
 import { onMessageCreate } from './presentation/events/onMessageCreate.js';
@@ -36,6 +46,10 @@ export async function startBot(env: Env): Promise<void> {
   logger.info('MySQL pronto', { host: env.MYSQL_HOST, database: env.MYSQL_DATABASE });
 
   const guildSettings = new MysqlGuildSettingsRepository(pool);
+  const ticketOptions = new MysqlTicketOptionRepository(pool);
+  const tickets = new MysqlTicketRepository(pool);
+  const ticketPanels = new MysqlTicketPanelRepository(pool);
+
   const defaults: GuildSettingsDefaults = {
     systemPrompt: env.SYSTEM_PROMPT,
     model: env.OPENAI_MODEL,
@@ -54,6 +68,13 @@ export async function startBot(env: Env): Promise<void> {
     getGuildSettings: new GetGuildSettingsUseCase(guildSettings, defaults),
     updateGuildSettings: new UpdateGuildSettingsUseCase(guildSettings, defaults),
     resetGuildSettings: new ResetGuildSettingsUseCase(guildSettings),
+    addTicketOption: new AddTicketOptionUseCase(ticketOptions),
+    removeTicketOption: new RemoveTicketOptionUseCase(ticketOptions),
+    listTicketOptions: new ListTicketOptionsUseCase(ticketOptions),
+    openTicket: new OpenTicketUseCase(ticketOptions, tickets),
+    closeTicket: new CloseTicketUseCase(tickets),
+    purgeGuildTickets: new PurgeGuildTicketsUseCase(ticketOptions, tickets, ticketPanels),
+    ticketPanels,
     cooldown: new Cooldown(),
   };
 
@@ -73,6 +94,10 @@ export async function startBot(env: Env): Promise<void> {
 
   client.on(Events.GuildDelete, (guild) => {
     void onGuildDelete(guild, deps);
+  });
+
+  client.on(Events.ChannelDelete, (channel) => {
+    void onChannelDelete(channel, deps);
   });
 
   client.on(Events.Error, (error) => {

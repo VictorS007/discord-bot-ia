@@ -39,6 +39,8 @@ const envSchema = z.object({
     .string()
     .regex(/^[A-Za-z0-9_]+$/, 'MYSQL_DATABASE deve conter só letras, números e underscore')
     .default('discord_bot_ia'),
+
+  BOT_OWNER_ID: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;

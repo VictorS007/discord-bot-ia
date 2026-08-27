@@ -57,3 +57,42 @@ export class ChannelNotAllowedError extends AppError {
     );
   }
 }
+
+export class NotBotOwnerError extends AppError {
+  constructor() {
+    super(
+      'Apenas o dono do bot pode configurar tickets',
+      'Só o **dono do bot** pode configurar o sistema de tickets.',
+    );
+  }
+}
+
+export class TicketOptionLimitError extends AppError {
+  constructor(limit: number) {
+    super(
+      `Limite de ${limit} opções por canal`,
+      `Este canal já tem ${limit} opções — o máximo do menu do Discord.`,
+    );
+  }
+}
+
+export class DuplicateTicketOptionError extends AppError {
+  constructor(label: string) {
+    super(`Opção duplicada: ${label}`, `Já existe uma opção chamada **${label}** neste canal.`);
+  }
+}
+
+export class TicketAlreadyOpenError extends AppError {
+  constructor(channelId: string) {
+    super(
+      `Ticket já aberto em ${channelId}`,
+      `Você já tem um ticket aberto neste tipo: <#${channelId}>.`,
+    );
+  }
+}
+
+export class TicketNotFoundError extends AppError {
+  constructor() {
+    super('Ticket não encontrado', 'Não achei um ticket aberto neste canal.');
+  }
+}

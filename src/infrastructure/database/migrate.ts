@@ -28,6 +28,51 @@ const MIGRATIONS: ReadonlyArray<{ version: number; sql: string }> = [
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `,
   },
+  {
+    version: 2,
+    sql: `
+      CREATE TABLE IF NOT EXISTS ticket_options (
+        id BIGINT NOT NULL AUTO_INCREMENT,
+        guild_id VARCHAR(32) NOT NULL,
+        panel_channel_id VARCHAR(32) NOT NULL,
+        label VARCHAR(100) NOT NULL,
+        category_id VARCHAR(32) NOT NULL,
+        created_at DATETIME(3) NOT NULL,
+        updated_at DATETIME(3) NOT NULL,
+        PRIMARY KEY (id),
+        INDEX idx_ticket_options_guild_channel (guild_id, panel_channel_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `,
+  },
+  {
+    version: 3,
+    sql: `
+      CREATE TABLE IF NOT EXISTS tickets (
+        id BIGINT NOT NULL AUTO_INCREMENT,
+        guild_id VARCHAR(32) NOT NULL,
+        option_id BIGINT NOT NULL,
+        channel_id VARCHAR(32) NOT NULL,
+        user_id VARCHAR(32) NOT NULL,
+        status ENUM('open', 'closed') NOT NULL DEFAULT 'open',
+        created_at DATETIME(3) NOT NULL,
+        closed_at DATETIME(3) NULL,
+        PRIMARY KEY (id),
+        UNIQUE KEY uk_tickets_channel (channel_id),
+        INDEX idx_tickets_open_user (guild_id, user_id, option_id, status)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `,
+  },
+  {
+    version: 4,
+    sql: `
+      CREATE TABLE IF NOT EXISTS ticket_panels (
+        guild_id VARCHAR(32) NOT NULL,
+        channel_id VARCHAR(32) NOT NULL,
+        message_id VARCHAR(32) NOT NULL,
+        PRIMARY KEY (guild_id, channel_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `,
+  },
 ];
 
 export async function migrate(pool: Pool): Promise<void> {

@@ -12,6 +12,7 @@ Você pode perguntar via slash command (`/ask`) ou mencionando o bot em qualquer
 - `/ping` — latência da API e do WebSocket
 - `/help` — instruções de uso
 - `/config` — configurações persistidas **por servidor** (prompt, modelo, canal, cooldown…)
+- `/ticket` — sistema de tickets configurado pelo **dono do bot** (sala, opção, categoria)
 - Compatível com qualquer API no formato Chat Completions (OpenAI, Groq, OpenRouter, Ollama)
 - Cooldown por usuário para evitar spam
 - Mensagens longas são fatiadas no limite de 2000 caracteres do Discord
@@ -32,7 +33,7 @@ Você pode perguntar via slash command (`/ask`) ou mencionando o bot em qualquer
    - **Message Content Intent** (obrigatório para responder a menções)
 4. Em **OAuth2 → URL Generator**, marque:
    - Scopes: `bot`, `applications.commands`
-   - Bot Permissions: `Send Messages`, `Read Message History`, `Embed Links`, `Use Slash Commands`
+   - Bot Permissions: `Send Messages`, `Read Message History`, `Embed Links`, `Use Slash Commands`, `Manage Channels`
 5. Abra a URL gerada e convide o bot para o servidor.
 6. Copie o **Application ID** (General Information) e, se quiser registro instantâneo de comandos, o **ID do servidor** (modo desenvolvedor no Discord → clique direito no servidor → Copiar ID).
 
@@ -63,6 +64,7 @@ MYSQL_PORT=3306
 MYSQL_USER=root
 MYSQL_PASSWORD=
 MYSQL_DATABASE=discord_bot_ia
+# BOT_OWNER_ID=seu_discord_user_id   # opcional; se vazio, usa o dono da aplicação no Discord
 ```
 
 O bot cria o database `MYSQL_DATABASE` e as tabelas na primeira subida, se ainda não existirem. O servidor MySQL precisa estar rodando e o usuário precisa de permissão para criar database (ou crie o schema antes).
@@ -102,8 +104,23 @@ Os slash commands são registrados na inicialização. Com `DISCORD_GUILD_ID`, a
 | `/ping`  | Mostra latência                                        |
 | `/help`   | Explica como usar o bot                                |
 | `/config` | Configurações deste servidor (quem tem Gerenciar Servidor) |
+| `/ticket` | Tickets: o dono do bot cadastra opções; usuários abrem pelo menu |
 
 O histórico de conversa é por **usuário + canal** e fica em memória. Reiniciar o processo zera as conversas, mas **não** apaga as configurações do servidor.
+
+### `/ticket`
+
+Só o **dono do bot** (dono da aplicação no Discord, ou `BOT_OWNER_ID` no `.env`) cadastra as opções. Cada opção guarda três coisas: sala do painel, nome no menu e categoria onde o canal será criado.
+
+| Subcomando | Quem usa | Efeito |
+|---|---|---|
+| `/ticket adicionar` | Dono do bot | Cadastra opção (`sala`, `opcao`, `categoria`) e atualiza o menu |
+| `/ticket remover` | Dono do bot | Remove pelo ID (`/ticket listar`) |
+| `/ticket listar` | Dono do bot | Lista opções deste servidor |
+| `/ticket painel` | Dono do bot | Republica o menu na sala |
+| `/ticket fechar` | Quem abriu / moderador | Fecha o ticket do canal atual |
+
+O membro escolhe a opção no menu da sala. O bot cria um canal privado na categoria daquela opção, copiando as permissões da categoria (para a equipe continuar vendo) e liberando quem abriu o ticket.
 
 ### `/config` (por servidor)
 

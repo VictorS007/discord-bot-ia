@@ -20,6 +20,7 @@ Contratos estáveis.
 - `ConversationStore` — persistência do histórico
 - `conversationId()` — chave estável `canal:usuário`
 - `GuildSettings` / `GuildSettingsRepository` — configuração por servidor Discord
+- `TicketOption` / `Ticket` / painel — opções de ticket, canais abertos e message ID do menu
 
 Nada nesta pasta importa `discord.js`, `fetch` ou variáveis de ambiente.
 
@@ -31,6 +32,7 @@ Casos de uso orquestram o domínio.
 - `ResetConversationUseCase` — apaga o histórico de uma chave
 - `GetGuildSettingsUseCase` — mescla a linha do banco com os defaults do `.env`
 - `UpdateGuildSettingsUseCase` / `ResetGuildSettingsUseCase` — patch ou restore
+- Casos de uso de ticket — cadastrar opção, abrir, fechar, limpar ao sair do servidor
 
 Eles recebem interfaces no construtor. Não sabem se a IA é OpenAI ou se o histórico está em um `Map`.
 
@@ -43,6 +45,9 @@ Adaptadores para o mundo externo.
 | `OpenAiCompatibleProvider`   | `AiProvider`          | HTTP Chat Completions                        |
 | `InMemoryConversationStore`  | `ConversationStore`   | `Map` em processo                            |
 | `MysqlGuildSettingsRepository` | `GuildSettingsRepository` | MySQL (`guild_settings`)                 |
+| `MysqlTicketOptionRepository`  | `TicketOptionRepository`  | MySQL (`ticket_options`)                 |
+| `MysqlTicketRepository`        | `TicketRepository`        | MySQL (`tickets`)                        |
+| `MysqlTicketPanelRepository`   | `TicketPanelRepository`   | MySQL (`ticket_panels`)                  |
 | `createDiscordClient`        | —                     | Intents e client do discord.js               |
 | `registerSlashCommands`      | —                     | Publica comandos na API do Discord           |
 

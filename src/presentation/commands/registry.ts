@@ -9,7 +9,15 @@ import { configCommand } from './config.js';
 import { helpCommand } from './help.js';
 import { pingCommand } from './ping.js';
 import { resetCommand } from './reset.js';
+import { ticketCommand } from './ticket.js';
 
-export const commands: Command[] = [askCommand, resetCommand, pingCommand, helpCommand, configCommand];
+export const commands: Command[] = [
+  askCommand,
+  resetCommand,
+  pingCommand,
+  helpCommand,
+  configCommand,
+  ticketCommand,
+];
 
 export const commandsByName = new Map(commands.map((command) => [command.data.name, command]));

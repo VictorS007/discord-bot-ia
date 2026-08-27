@@ -6,6 +6,7 @@ import type { AppDependencies } from '../../container.js';
 
 export async function onGuildDelete(guild: Guild, deps: AppDependencies): Promise<void> {
   await deps.resetGuildSettings.execute(guild.id);
+  await deps.purgeGuildTickets.execute(guild.id);
   deps.logger.info('Configurações do servidor removidas', {
     guildId: guild.id,
     nome: guild.name,

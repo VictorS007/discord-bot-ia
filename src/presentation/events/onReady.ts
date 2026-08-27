@@ -12,6 +12,8 @@ export async function onReady(client: Client<true>, deps: AppDependencies): Prom
     servidores: client.guilds.cache.size,
   });
 
+  await client.application.fetch();
+
   await registerSlashCommands({
     token: deps.env.DISCORD_TOKEN,
     clientId: deps.env.DISCORD_CLIENT_ID,
