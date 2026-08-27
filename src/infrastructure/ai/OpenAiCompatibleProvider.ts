@@ -4,7 +4,7 @@
  * Funciona com OpenAI, Groq, OpenRouter, vLLM, Ollama (modo OpenAI) e similares,
  * bastando ajustar OPENAI_BASE_URL e OPENAI_MODEL.
  */
-import type { AiProvider, ChatMessage } from '../../domain/ai/AiProvider.js';
+import type { AiProvider, CompleteChatInput } from '../../domain/ai/AiProvider.js';
 import { AiProviderError } from '../../shared/errors.js';
 import type { Logger } from '../../shared/logger.js';
 
@@ -23,11 +23,10 @@ export class OpenAiCompatibleProvider implements AiProvider {
   constructor(
     private readonly apiKey: string,
     private readonly baseUrl: string,
-    private readonly model: string,
     private readonly logger: Logger,
   ) {}
 
-  async complete(messages: ChatMessage[]): Promise<string> {
+  async complete(input: CompleteChatInput): Promise<string> {
     const url = `${this.baseUrl.replace(/\/$/, '')}/chat/completions`;
 
     let response: Response;
@@ -40,8 +39,8 @@ export class OpenAiCompatibleProvider implements AiProvider {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: this.model,
-          messages,
+          model: input.model,
+          messages: input.messages,
           temperature: 0.7,
         }),
       });

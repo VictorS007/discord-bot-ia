@@ -29,7 +29,16 @@ const envSchema = z.object({
       'Você é um assistente útil em um servidor Discord. Responda de forma clara, objetiva e amigável. Use português, a menos que o usuário escreva em outro idioma.',
     ),
   MAX_HISTORY_MESSAGES: z.coerce.number().int().positive().max(50).default(20),
-  USER_COOLDOWN_MS: z.coerce.number().int().positive().default(3000),
+  USER_COOLDOWN_MS: z.coerce.number().int().min(0).default(3000),
+
+  MYSQL_HOST: z.string().min(1).default('127.0.0.1'),
+  MYSQL_PORT: z.coerce.number().int().positive().default(3306),
+  MYSQL_USER: z.string().min(1).default('root'),
+  MYSQL_PASSWORD: z.string().default(''),
+  MYSQL_DATABASE: z
+    .string()
+    .regex(/^[A-Za-z0-9_]+$/, 'MYSQL_DATABASE deve conter só letras, números e underscore')
+    .default('discord_bot_ia'),
 });
 
 export type Env = z.infer<typeof envSchema>;

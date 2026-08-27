@@ -1,4 +1,5 @@
 import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
+import { assertAiAllowed } from '../../application/assertAiAllowed.js';
 import { conversationId } from '../../domain/conversation/conversationId.js';
 import { AppError, RateLimitError } from '../../shared/errors.js';
 import { splitMessage } from '../../shared/splitMessage.js';
@@ -16,7 +17,17 @@ export const askCommand: Command = {
     ),
 
   async execute(interaction: ChatInputCommandInteraction, deps: AppDependencies) {
-    const wait = deps.cooldown.remaining(interaction.user.id);
+    const settings = await deps.getGuildSettings.execute(interaction.guildId);
+
+    try {
+      assertAiAllowed(settings, interaction.channelId);
+    } catch (error) {
+      const message = error instanceof AppError ? error.userMessage : 'A IA não está disponível aqui.';
+      await interaction.reply({ embeds: [errorEmbed(message)], ephemeral: true });
+      return;
+    }
+
+    const wait = deps.cooldown.remaining(interaction.user.id, settings.cooldownMs);
 
     if (wait > 0) {
       await interaction.reply({
@@ -34,6 +45,9 @@ export const askCommand: Command = {
       const answer = await deps.askAi.execute({
         conversationId: conversationId(interaction.user.id, interaction.channelId),
         question,
+        systemPrompt: settings.systemPrompt,
+        model: settings.model,
+        maxHistoryMessages: settings.maxHistoryMessages,
       });
 
       const [first, ...rest] = splitMessage(answer, DISCORD_MESSAGE_LIMIT);

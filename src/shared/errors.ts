@@ -27,3 +27,33 @@ export class RateLimitError extends AppError {
     );
   }
 }
+
+export class NotInGuildError extends AppError {
+  constructor() {
+    super('Comando fora de servidor', 'Este comando só funciona dentro de um servidor.');
+  }
+}
+
+export class MissingPermissionError extends AppError {
+  constructor() {
+    super(
+      'Sem permissão para configurar o servidor',
+      'Você precisa da permissão **Gerenciar Servidor** para alterar as configurações.',
+    );
+  }
+}
+
+export class GuildAiDisabledError extends AppError {
+  constructor() {
+    super('IA desligada neste servidor', 'A IA está desligada neste servidor. Um administrador pode ligar com `/config ia`.');
+  }
+}
+
+export class ChannelNotAllowedError extends AppError {
+  constructor(channelId: string) {
+    super(
+      `IA restrita ao canal ${channelId}`,
+      `Neste servidor a IA só responde em <#${channelId}>.`,
+    );
+  }
+}

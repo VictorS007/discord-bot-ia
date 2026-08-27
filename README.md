@@ -11,13 +11,16 @@ Você pode perguntar via slash command (`/ask`) ou mencionando o bot em qualquer
 - `/reset` — apaga o contexto da conversa neste canal
 - `/ping` — latência da API e do WebSocket
 - `/help` — instruções de uso
+- `/config` — configurações persistidas **por servidor** (prompt, modelo, canal, cooldown…)
 - Compatível com qualquer API no formato Chat Completions (OpenAI, Groq, OpenRouter, Ollama)
 - Cooldown por usuário para evitar spam
 - Mensagens longas são fatiadas no limite de 2000 caracteres do Discord
+- MySQL para guardar as configurações de cada servidor (sobrevive a restarts)
 
 ## Pré-requisitos
 
 - Node.js 20 ou superior
+- MySQL 5.7 ou 8 (XAMPP, WAMP, Docker, servidor remoto)
 - Uma aplicação no [Discord Developer Portal](https://discord.com/developers/applications)
 - Uma chave de API de um provedor de IA (OpenAI ou compatível)
 
@@ -55,7 +58,14 @@ DISCORD_GUILD_ID=id_do_servidor          # opcional, mas recomendado em desenvol
 OPENAI_API_KEY=sua_chave
 OPENAI_BASE_URL=https://api.openai.com/v1
 OPENAI_MODEL=gpt-4o-mini
+MYSQL_HOST=127.0.0.1
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=
+MYSQL_DATABASE=discord_bot_ia
 ```
+
+O bot cria o database `MYSQL_DATABASE` e as tabelas na primeira subida, se ainda não existirem. O servidor MySQL precisa estar rodando e o usuário precisa de permissão para criar database (ou crie o schema antes).
 
 ### Outros provedores
 
@@ -90,9 +100,28 @@ Os slash commands são registrados na inicialização. Com `DISCORD_GUILD_ID`, a
 | `/ask`   | Envia uma pergunta à IA                                |
 | `/reset` | Limpa o histórico da sua conversa no canal atual       |
 | `/ping`  | Mostra latência                                        |
-| `/help`  | Explica como usar o bot                                |
+| `/help`   | Explica como usar o bot                                |
+| `/config` | Configurações deste servidor (quem tem Gerenciar Servidor) |
 
-O histórico é por **usuário + canal** e fica em memória. Reiniciar o processo zera as conversas.
+O histórico de conversa é por **usuário + canal** e fica em memória. Reiniciar o processo zera as conversas, mas **não** apaga as configurações do servidor.
+
+### `/config` (por servidor)
+
+Quem tem a permissão **Gerenciar Servidor** pode personalizar o bot. Tudo é gravado no MySQL (tabela `guild_settings`).
+
+| Subcomando        | Efeito                                              |
+|-------------------|-----------------------------------------------------|
+| `/config ver`     | Mostra a configuração efetiva                       |
+| `/config ia`      | Liga/desliga a IA                                   |
+| `/config mencoes` | Liga/desliga respostas a `@bot`                     |
+| `/config prompt`  | Prompt de sistema                                   |
+| `/config modelo`  | Modelo (ex.: `gpt-4o-mini`)                         |
+| `/config canal`   | Restringe a IA a um canal; sem canal, libera todos  |
+| `/config cooldown`| Intervalo mínimo entre perguntas (ms)               |
+| `/config historico` | Tamanho do contexto por conversa                  |
+| `/config restaurar` | Volta aos padrões globais do `.env`               |
+
+Campos não personalizados herdam `SYSTEM_PROMPT`, `OPENAI_MODEL`, `USER_COOLDOWN_MS` e `MAX_HISTORY_MESSAGES` do `.env`. Se o bot sair do servidor, a linha correspondente é apagada.
 
 ## Arquitetura
 
@@ -100,9 +129,9 @@ A estrutura está descrita em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Resu
 
 ```
 src/
-  domain/           Contratos (IA, histórico) — sem Discord, sem HTTP
-  application/      Casos de uso (perguntar, resetar)
-  infrastructure/   OpenAI, memória, cliente Discord
+  domain/           Contratos (IA, histórico, configurações de servidor)
+  application/      Casos de uso (perguntar, resetar, config)
+  infrastructure/   OpenAI, MySQL, memória, cliente Discord
   presentation/     Comandos, eventos, embeds
   config/           Variáveis de ambiente
   shared/           Logger, erros, cooldown

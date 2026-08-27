@@ -16,9 +16,10 @@ presentation  →  application  →  domain
 
 Contratos estáveis.
 
-- `AiProvider` — “dado um histórico, devolva a próxima resposta”
+- `AiProvider` — “dado um histórico e um modelo, devolva a próxima resposta”
 - `ConversationStore` — persistência do histórico
 - `conversationId()` — chave estável `canal:usuário`
+- `GuildSettings` / `GuildSettingsRepository` — configuração por servidor Discord
 
 Nada nesta pasta importa `discord.js`, `fetch` ou variáveis de ambiente.
 
@@ -28,6 +29,8 @@ Casos de uso orquestram o domínio.
 
 - `AskAiUseCase` — anexa a pergunta ao histórico, chama a IA, grava a resposta
 - `ResetConversationUseCase` — apaga o histórico de uma chave
+- `GetGuildSettingsUseCase` — mescla a linha do banco com os defaults do `.env`
+- `UpdateGuildSettingsUseCase` / `ResetGuildSettingsUseCase` — patch ou restore
 
 Eles recebem interfaces no construtor. Não sabem se a IA é OpenAI ou se o histórico está em um `Map`.
 
@@ -39,10 +42,11 @@ Adaptadores para o mundo externo.
 |------------------------------|-----------------------|----------------------------------------------|
 | `OpenAiCompatibleProvider`   | `AiProvider`          | HTTP Chat Completions                        |
 | `InMemoryConversationStore`  | `ConversationStore`   | `Map` em processo                            |
+| `MysqlGuildSettingsRepository` | `GuildSettingsRepository` | MySQL (`guild_settings`)                 |
 | `createDiscordClient`        | —                     | Intents e client do discord.js               |
 | `registerSlashCommands`      | —                     | Publica comandos na API do Discord           |
 
-Para persistir conversas entre restarts, crie outra implementação de `ConversationStore` (Redis, SQLite, etc.) e troque a instância em `app.ts`.
+O pool MySQL é aberto em `openMysql.ts`. O bot cria o database (se o usuário tiver permissão) e aplica as migrations em `infrastructure/database/migrate.ts`.
 
 ### `presentation/`
 
@@ -68,14 +72,15 @@ usuário → /ask ou menção
 ## Decisões
 
 1. **Sem SDK da OpenAI** — `fetch` nativo cobre qualquer API compatível e reduz dependências.
-2. **Histórico em memória** — simples, previsível e suficiente para um processo. Reiniciar o bot zera o contexto; isso está documentado para o usuário (`/help`).
-3. **Cooldown por usuário** — protege a cota da API sem um rate limiter distribuído.
-4. **Slash commands no `ready`** — evita um script separado de deploy. Guild commands para desenvolvimento rápido; globais quando `DISCORD_GUILD_ID` estiver vazio.
-5. **TypeScript `strict` + `noUncheckedIndexedAccess`** — falhas de tipo aparecem no compile, não em runtime no Discord.
+2. **Histórico de conversa em memória** — simples e previsível. Reiniciar o bot zera o contexto; configurações de servidor **não**.
+3. **Configuração por guild no MySQL** — pool `mysql2`, tabela `guild_settings`. Campos `null` herdam o `.env`.
+4. **Cooldown por usuário** — a janela vem das settings do servidor.
+5. **Slash commands no `ready`** — evita um script separado de deploy. Guild commands para desenvolvimento rápido; globais quando `DISCORD_GUILD_ID` estiver vazio.
+6. **TypeScript `strict` + `noUncheckedIndexedAccess`** — falhas de tipo aparecem no compile, não em runtime no Discord.
 
 ## Estender
 
 - **Novo comando:** arquivo em `presentation/commands/` + entrada em `registry.ts`.
 - **Novo evento:** função em `presentation/events/` + `client.on(...)` em `app.ts`.
 - **Novo provedor de IA:** classe que implementa `AiProvider`, substituída em `app.ts`.
-- **Persistência:** classe que implementa `ConversationStore`, substituída em `app.ts`.
+- **Persistência de conversas:** classe que implementa `ConversationStore`, substituída em `app.ts`.

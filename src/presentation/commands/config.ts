@@ -1,0 +1,223 @@
+/**
+ * `/config` — administradores personalizam o bot por servidor.
+ * As alterações vão para o MySQL e valem imediatamente.
+ */
+import {
+  ChannelType,
+  PermissionFlagsBits,
+  SlashCommandBuilder,
+  type ChatInputCommandInteraction,
+} from 'discord.js';
+import type { ResolvedGuildSettings } from '../../domain/guild/GuildSettings.js';
+import type { AppDependencies } from '../../container.js';
+import { AppError, MissingPermissionError, NotInGuildError } from '../../shared/errors.js';
+import { errorEmbed, infoEmbed } from '../embeds.js';
+import type { Command } from './Command.js';
+
+export const configCommand: Command = {
+  data: new SlashCommandBuilder()
+    .setName('config')
+    .setDescription('Configurações do bot neste servidor.')
+    .setDMPermission(false)
+    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
+    .addSubcommand((sub) => sub.setName('ver').setDescription('Mostra as configurações atuais.'))
+    .addSubcommand((sub) =>
+      sub
+        .setName('ia')
+        .setDescription('Liga ou desliga a IA neste servidor.')
+        .addBooleanOption((option) =>
+          option.setName('ativado').setDescription('A IA deve responder neste servidor?').setRequired(true),
+        ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('mencoes')
+        .setDescription('Liga ou desliga respostas quando o bot é mencionado.')
+        .addBooleanOption((option) =>
+          option.setName('ativado').setDescription('Responder a menções?').setRequired(true),
+        ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('prompt')
+        .setDescription('Define o prompt de sistema da IA neste servidor.')
+        .addStringOption((option) =>
+          option
+            .setName('texto')
+            .setDescription('Instruções para a IA. Deixe no padrão do .env com /config restaurar.')
+            .setRequired(true)
+            .setMaxLength(2000),
+        ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('modelo')
+        .setDescription('Define o modelo de IA deste servidor.')
+        .addStringOption((option) =>
+          option.setName('nome').setDescription('Ex.: gpt-4o-mini').setRequired(true).setMaxLength(100),
+        ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('canal')
+        .setDescription('Restringe a IA a um canal. Sem canal, libera todos.')
+        .addChannelOption((option) =>
+          option
+            .setName('destino')
+            .setDescription('Canal permitido. Omita para permitir todos.')
+            .addChannelTypes(ChannelType.GuildText, ChannelType.GuildAnnouncement),
+        ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('cooldown')
+        .setDescription('Intervalo mínimo entre perguntas, em milissegundos.')
+        .addIntegerOption((option) =>
+          option
+            .setName('ms')
+            .setDescription('0 desliga o cooldown. Máximo: 60000.')
+            .setRequired(true)
+            .setMinValue(0)
+            .setMaxValue(60_000),
+        ),
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('historico')
+        .setDescription('Quantas mensagens de contexto a IA guarda por conversa.')
+        .addIntegerOption((option) =>
+          option.setName('quantidade').setDescription('De 1 a 50.').setRequired(true).setMinValue(1).setMaxValue(50),
+        ),
+    )
+    .addSubcommand((sub) =>
+      sub.setName('restaurar').setDescription('Apaga as configurações deste servidor e volta aos padrões globais.'),
+    ),
+
+  async execute(interaction: ChatInputCommandInteraction, deps: AppDependencies) {
+    const guildId = interaction.guildId;
+
+    if (!guildId) {
+      await interaction.reply({ embeds: [errorEmbed(new NotInGuildError().userMessage)], ephemeral: true });
+      return;
+    }
+
+    if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
+      await interaction.reply({
+        embeds: [errorEmbed(new MissingPermissionError().userMessage)],
+        ephemeral: true,
+      });
+      return;
+    }
+
+    const subcommand = interaction.options.getSubcommand();
+
+    try {
+      if (subcommand === 'ver') {
+        const settings = await deps.getGuildSettings.execute(guildId);
+        await interaction.reply({ embeds: [settingsEmbed(settings)], ephemeral: true });
+        return;
+      }
+
+      if (subcommand === 'restaurar') {
+        await deps.resetGuildSettings.execute(guildId);
+        const settings = await deps.getGuildSettings.execute(guildId);
+        await interaction.reply({
+          embeds: [infoEmbed('Configurações restauradas', 'Este servidor voltou aos padrões globais do bot.')],
+          ephemeral: true,
+        });
+        await interaction.followUp({ embeds: [settingsEmbed(settings)], ephemeral: true });
+        return;
+      }
+
+      const updated = await applySubcommand(interaction, guildId, deps, subcommand);
+      await interaction.reply({
+        embeds: [infoEmbed('Configuração salva', 'A alteração já vale neste servidor.')],
+        ephemeral: true,
+      });
+      await interaction.followUp({ embeds: [settingsEmbed(updated)], ephemeral: true });
+    } catch (error) {
+      const message = error instanceof AppError ? error.userMessage : 'Não consegui salvar a configuração.';
+      deps.logger.error('Falha no comando /config', {
+        error: error instanceof Error ? error.message : String(error),
+        subcommand,
+      });
+
+      if (interaction.replied || interaction.deferred) {
+        await interaction.followUp({ embeds: [errorEmbed(message)], ephemeral: true });
+        return;
+      }
+
+      await interaction.reply({ embeds: [errorEmbed(message)], ephemeral: true });
+    }
+  },
+};
+
+async function applySubcommand(
+  interaction: ChatInputCommandInteraction,
+  guildId: string,
+  deps: AppDependencies,
+  subcommand: string,
+): Promise<ResolvedGuildSettings> {
+  switch (subcommand) {
+    case 'ia':
+      return deps.updateGuildSettings.execute(guildId, {
+        aiEnabled: interaction.options.getBoolean('ativado', true),
+      });
+    case 'mencoes':
+      return deps.updateGuildSettings.execute(guildId, {
+        mentionEnabled: interaction.options.getBoolean('ativado', true),
+      });
+    case 'prompt': {
+      const texto = interaction.options.getString('texto', true).trim();
+      if (texto.length === 0) {
+        throw new AppError('Prompt vazio', 'O prompt não pode ser vazio.');
+      }
+      return deps.updateGuildSettings.execute(guildId, { systemPrompt: texto });
+    }
+    case 'modelo': {
+      const nome = interaction.options.getString('nome', true).trim();
+      if (nome.length === 0) {
+        throw new AppError('Modelo vazio', 'Informe o nome do modelo.');
+      }
+      return deps.updateGuildSettings.execute(guildId, { model: nome });
+    }
+    case 'canal': {
+      const channel = interaction.options.getChannel('destino');
+      return deps.updateGuildSettings.execute(guildId, {
+        allowedChannelId: channel?.id ?? null,
+      });
+    }
+    case 'cooldown':
+      return deps.updateGuildSettings.execute(guildId, {
+        cooldownMs: interaction.options.getInteger('ms', true),
+      });
+    case 'historico':
+      return deps.updateGuildSettings.execute(guildId, {
+        maxHistoryMessages: interaction.options.getInteger('quantidade', true),
+      });
+    default:
+      throw new Error(`Subcomando desconhecido: ${subcommand}`);
+  }
+}
+
+function settingsEmbed(settings: ResolvedGuildSettings) {
+  const promptPreview =
+    settings.systemPrompt.length > 400 ? `${settings.systemPrompt.slice(0, 397)}...` : settings.systemPrompt;
+
+  const description = [
+    `**IA:** ${onOff(settings.aiEnabled)}`,
+    `**Menções:** ${onOff(settings.mentionEnabled)}`,
+    `**Modelo:** \`${settings.model}\`${settings.usingDefaultModel ? ' *(padrão global)*' : ''}`,
+    `**Canal:** ${settings.allowedChannelId ? `<#${settings.allowedChannelId}>` : 'todos'}`,
+    `**Cooldown:** ${settings.cooldownMs}ms${settings.usingDefaultCooldown ? ' *(padrão global)*' : ''}`,
+    `**Histórico:** ${settings.maxHistoryMessages} mensagens${settings.usingDefaultHistory ? ' *(padrão global)*' : ''}`,
+    `**Prompt:**${settings.usingDefaultPrompt ? ' *(padrão global)*' : ''}`,
+    promptPreview,
+  ].join('\n');
+
+  return infoEmbed('Configurações do servidor', description);
+}
+
+function onOff(value: boolean): string {
+  return value ? 'ligada' : 'desligada';
+}

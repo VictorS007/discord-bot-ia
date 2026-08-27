@@ -4,6 +4,7 @@
  * Exemplo: "@Bot explique o que é Clean Architecture"
  */
 import type { Message } from 'discord.js';
+import { assertAiAllowed } from '../../application/assertAiAllowed.js';
 import { DISCORD_MESSAGE_LIMIT } from '../../config/constants.js';
 import { conversationId } from '../../domain/conversation/conversationId.js';
 import type { AppDependencies } from '../../container.js';
@@ -18,6 +19,18 @@ export async function onMessageCreate(message: Message, deps: AppDependencies): 
     return;
   }
 
+  const settings = await deps.getGuildSettings.execute(message.guildId);
+
+  if (!settings.mentionEnabled) {
+    return;
+  }
+
+  try {
+    assertAiAllowed(settings, message.channelId);
+  } catch {
+    return;
+  }
+
   const question = message.content.replace(new RegExp(`<@!?${botUser.id}>`, 'g'), '').trim();
 
   if (question.length === 0) {
@@ -27,7 +40,7 @@ export async function onMessageCreate(message: Message, deps: AppDependencies): 
     return;
   }
 
-  const wait = deps.cooldown.remaining(message.author.id);
+  const wait = deps.cooldown.remaining(message.author.id, settings.cooldownMs);
 
   if (wait > 0) {
     await message.reply({ embeds: [errorEmbed(new RateLimitError(wait).userMessage)] });
@@ -45,6 +58,9 @@ export async function onMessageCreate(message: Message, deps: AppDependencies): 
     const answer = await deps.askAi.execute({
       conversationId: conversationId(message.author.id, message.channelId),
       question,
+      systemPrompt: settings.systemPrompt,
+      model: settings.model,
+      maxHistoryMessages: settings.maxHistoryMessages,
     });
 
     const chunks = splitMessage(answer, DISCORD_MESSAGE_LIMIT);

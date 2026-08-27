@@ -12,6 +12,11 @@ export interface ChatMessage {
   content: string;
 }
 
+export interface CompleteChatInput {
+  messages: ChatMessage[];
+  model: string;
+}
+
 export interface AiProvider {
-  complete(messages: ChatMessage[]): Promise<string>;
+  complete(input: CompleteChatInput): Promise<string>;
 }

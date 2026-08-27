@@ -3,12 +3,14 @@
  */
 import type {
   ChatInputCommandInteraction,
-  SlashCommandBuilder,
-  SlashCommandOptionsOnlyBuilder,
+  RESTPostAPIChatInputApplicationCommandsJSONBody,
 } from 'discord.js';
 import type { AppDependencies } from '../../container.js';
 
 export interface Command {
-  data: SlashCommandBuilder | SlashCommandOptionsOnlyBuilder;
+  data: {
+    name: string;
+    toJSON(): RESTPostAPIChatInputApplicationCommandsJSONBody;
+  };
   execute(interaction: ChatInputCommandInteraction, deps: AppDependencies): Promise<void>;
 }
